@@ -1,0 +1,50 @@
+.career-attachments {
+  list-style: none;
+  padding: 0;
+  margin: .5rem 0 0;
+}
+
+.career-attachments li {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .25rem 0;
+}
+
+.career-attachments li + li { border-top: 1px solid #eee5da; }
+
+.career-attachment-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: .875rem;
+}
+
+.career-attachment-links {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.career-attachment-links a {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: .5rem;
+  color: #66554a;
+}
+
+.career-attachment-links a:hover {
+  background: #f7f1e9;
+  color: #a5221e;
+}
+
+.career-attachment-links svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
