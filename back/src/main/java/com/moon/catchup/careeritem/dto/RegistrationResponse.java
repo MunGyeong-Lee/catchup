@@ -11,5 +11,5 @@ import lombok.Getter;
 @AllArgsConstructor
 public final class RegistrationResponse {
     @Schema(description = "생성한 자료 식별자")
-    private final long materialId;
+    private final long careerItemId;
 }

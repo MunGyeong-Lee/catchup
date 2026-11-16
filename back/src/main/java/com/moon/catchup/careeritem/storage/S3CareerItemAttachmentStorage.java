@@ -1,16 +1,20 @@
 package com.moon.catchup.careeritem.storage;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /** 첨부 파일 원본을 비공개 Amazon S3 버킷에 저장하고 읽는다. */
 @Component
 @RequiredArgsConstructor
-class S3CareerItemAttachmentStorage implements CareerItemAttachmentStorage {
+public class S3CareerItemAttachmentStorage implements CareerItemAttachmentStorage {
+    private static final Pattern MANAGED_KEY = Pattern.compile("[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}");
     private final S3Client client;
     private final S3AttachmentSettings settings;
 
@@ -31,6 +35,17 @@ class S3CareerItemAttachmentStorage implements CareerItemAttachmentStorage {
     @Override
     public void delete(String key) {
         this.client.deleteObject(request -> request.bucket(bucket()).key(this.settings.getPrefix() + key));
+    }
+
+    /** 설정된 S3 버킷의 첨부 경로를 페이지 단위로 조회해 Catchup 첨부 객체 키를 반환한다. */
+    @Override
+    public List<String> listKeys() {
+        if (this.settings.getBucket().isBlank()) return List.of();
+        String prefix = this.settings.getPrefix();
+        return this.client.listObjectsV2Paginator(request -> request.bucket(bucket()).prefix(prefix))
+                .contents().stream().map(S3Object::key)
+                .filter(key -> key.startsWith(prefix)).map(key -> key.substring(prefix.length()))
+                .filter(key -> MANAGED_KEY.matcher(key).matches()).toList();
     }
 
     /** 버킷이 구성되었는지 확인하고 버킷 이름을 반환한다. */

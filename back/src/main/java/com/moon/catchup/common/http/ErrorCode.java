@@ -12,6 +12,7 @@ public enum ErrorCode {
     // 4xx 요청 오류
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 형식을 확인해 주세요."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "입력한 내용을 확인해 주세요."),
+    CAREER_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "자료를 찾을 수 없어요."),
     ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부 파일을 찾을 수 없어요."),
     PAYLOAD_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "파일당 20MiB, 첨부 합계 100MiB까지 가능합니다."),
     INVALID_RANGE(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE, "요청한 파일 범위를 읽을 수 없어요."),

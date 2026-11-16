@@ -9,7 +9,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 @EqualsAndHashCode
-public final class CareerItemSummary {
+public final class CareerItemSummaryVo {
     private final long id;
     private final CareerItemType type;
     private final String displayName;

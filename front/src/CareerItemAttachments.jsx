@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import './CareerItemAttachments.css'
 
-export default function CareerMaterialAttachments({ materialId }) {
+export default function CareerItemAttachments({ careerItemId }) {
   const [result, setResult] = useState(null)
   const [retry, setRetry] = useState(0)
-  const endpoint = `/api/career-materials/${materialId}/attachments`
+  const endpoint = `/api/career-items/${careerItemId}/attachments`
 
   useEffect(() => {
     const controller = new AbortController()
@@ -33,12 +34,24 @@ export default function CareerMaterialAttachments({ materialId }) {
   if (!result.files.length) return <p>첨부한 파일이 없어요.</p>
 
   return (
-    <ul className="attachment-list">
+    <ul className="career-attachments">
       {result.files.map(file => (
         <li key={file.attachmentId}>
-          <span>{file.name}</span>{' '}
-          <a href={`${endpoint}/${file.attachmentId}/view`} target="_blank" rel="noreferrer">다시 열기</a>{' '}
-          <a href={`${endpoint}/${file.attachmentId}/download`}>원본 내려받기</a>
+          <span className="career-attachment-name">{file.name}</span>
+          <div className="career-attachment-links">
+            <a href={`${endpoint}/${file.attachmentId}/view`} target="_blank" rel="noreferrer"
+              aria-label={`${file.name} 다시 열기 (새 탭)`} title="다시 열기 (새 탭)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13 5h6v6m0-6-9 9m0-9H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" />
+              </svg>
+            </a>
+            <a href={`${endpoint}/${file.attachmentId}/download`}
+              aria-label={`${file.name} 원본 내려받기`} title="원본 내려받기">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v11m-4-4 4 4 4-4M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" />
+              </svg>
+            </a>
+          </div>
         </li>
       ))}
     </ul>

@@ -6,18 +6,24 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.ArrayList;
 
-import com.moon.catchup.careeritem.domain.CareerItemDetails;
-import com.moon.catchup.careeritem.domain.CareerItemSummary;
+import com.moon.catchup.careeritem.domain.CareerItemDetailsVo;
+import com.moon.catchup.careeritem.domain.CareerItemSummaryVo;
 import com.moon.catchup.careeritem.domain.CareerItemType;
-import com.moon.catchup.careeritem.domain.CareerPeriod;
+import com.moon.catchup.careeritem.domain.CareerPeriodVo;
 import com.moon.catchup.careeritem.repository.CareerItemRepository;
+import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
+import com.moon.catchup.common.http.ErrorCode;
 import com.moon.catchup.common.http.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 자료 등록 규칙과 자료 목록 조회를 담당한다. */
@@ -26,19 +32,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class CareerItemServiceImpl implements CareerItemService {
 
     private final CareerItemRepository repository;
+    private final CareerItemAttachmentRepository attachments;
+    private final ApplicationEventPublisher events;
 
     /** 자료 입력을 검증하고 등록한 자료 식별자를 반환한다. */
     @Override
     @Transactional
-    public long register(String materialType, Map<String, Object> details) {
-        return insert(validate(materialType, details));
+    public long register(String careerItemType, Map<String, Object> details) {
+        return insert(validate(careerItemType, details));
     }
 
     /** 자료 입력을 검증하고 상세 입력 값 객체를 생성한다. */
-    CareerItemDetails validate(String materialType, Map<String, Object> details) {
-        CareerItemType type = CareerItemType.fromRequest(materialType);
+    public CareerItemDetailsVo validate(String careerItemType, Map<String, Object> details) {
+        CareerItemType type = CareerItemType.fromRequest(careerItemType);
         if (type == null) {
-            throw ApiException.validation(Map.of("materialType", "자료 유형을 선택해 주세요."));
+            throw ApiException.validation(Map.of("careerItemType", "자료 유형을 선택해 주세요."));
         }
         if (details == null) {
             throw ApiException.validation(Map.of("details", "자료 내용을 입력해 주세요."));
@@ -67,30 +75,47 @@ public class CareerItemServiceImpl implements CareerItemService {
 
         validateDetails(type, normalizedDetails, errors);
         if (!errors.isEmpty()) throw ApiException.validation(errors);
-        return CareerItemDetails.fromValidated(type, normalizedDetails);
+        return CareerItemDetailsVo.fromValidated(type, normalizedDetails);
     }
 
     /** 검증된 입력을 저장하고 데이터베이스가 발급한 식별자를 반환한다. */
-    long insert(CareerItemDetails details) {
+    public long insert(CareerItemDetailsVo details) {
         return this.repository.insert(details).getId();
+    }
+
+    /** 수정·삭제 전 자료를 잠그며 이미 삭제된 자료의 변경을 차단한다. */
+    public void lock(long id) {
+        this.repository.find(id, true).orElseThrow(() -> new ApiException(ErrorCode.CAREER_ITEM_NOT_FOUND));
+    }
+
+    /** DB에서 잠근 자료를 갱신하고 선택한 첨부 행을 삭제한 뒤 커밋 후 S3 원본 삭제를 요청한다. */
+    public void modify(long id, CareerItemDetailsVo details, List<UUID> removedIds) {
+        List<String> removedKeys = new ArrayList<>();
+        for (UUID attachmentId : new LinkedHashSet<>(removedIds)) {
+            String key = this.attachments.remove(id, attachmentId).orElseThrow(() ->
+                    ApiException.validation(Map.of("removeAttachmentIds", "이 자료의 첨부 파일만 삭제할 수 있어요.")));
+            removedKeys.add(key);
+        }
+        this.repository.update(id, details);
+        if (!removedKeys.isEmpty()) this.events.publishEvent(new CareerItemAttachmentCleanup.Removed(removedKeys));
     }
 
     /** 저장소에서 목록 표시용 자료 요약을 조회한다. */
     @Override
     @Transactional(readOnly = true)
-    public List<CareerItemSummary> list() {
+    public List<CareerItemSummaryVo> list() {
         return this.repository.list();
     }
 
     /** 자료 유형별 기간, 진행 상태, 링크 규칙을 검증한다. */
-    private static void validateDetails(CareerItemType materialType, Map<String, Object> details, Map<String, String> errors) {
-        if (materialType == CareerItemType.CAREER_HISTORY) {
+    private static void validateDetails(CareerItemType careerItemType, Map<String, Object> details, Map<String, String> errors) {
+        if (careerItemType == CareerItemType.CAREER_HISTORY) {
             String historyType = (String) details.get("historyType");
             if (historyType != null && !Set.of("WORK", "STUDY", "TRAINING", "OTHER").contains(historyType)) {
                 errors.put("historyType", "이력 구분을 확인해 주세요.");
             }
         }
-        if (materialType == CareerItemType.CERTIFICATION) {
+        if (careerItemType == CareerItemType.CERTIFICATION) {
             validatePeriod(details, errors, "issuedOn", "expiresOn", "\\d{4}-\\d{2}-\\d{2}", LocalDate::parse);
             validateLink(details, errors, "verificationLink");
             return;
@@ -100,7 +125,7 @@ public class CareerItemServiceImpl implements CareerItemService {
         if (Boolean.TRUE.equals(details.get("ongoing")) && details.containsKey("endMonth")) {
             errors.put("endMonth", "진행 중인 이력에는 종료 연월을 입력할 수 없습니다.");
         }
-        if (materialType == CareerItemType.EXPERIENCE) {
+        if (careerItemType == CareerItemType.EXPERIENCE) {
             validateLink(details, errors, "relatedLink");
         }
     }
@@ -112,7 +137,7 @@ public class CareerItemServiceImpl implements CareerItemService {
         T start = parseDate(details, errors, startField, pattern, parse);
         T end = parseDate(details, errors, endField, pattern, parse);
         try {
-            new CareerPeriod<>(start, end);
+            CareerPeriodVo.of(start, end);
         } catch (IllegalArgumentException exception) {
             errors.put(endField, "시작 연월 또는 취득일과 같거나 이후여야 합니다.");
         }

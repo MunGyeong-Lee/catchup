@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.moon.catchup.careeritem.domain.CareerItemDetails;
+import com.moon.catchup.careeritem.domain.CareerItemDetailsVo;
 import com.moon.catchup.careeritem.domain.CareerItemType;
 import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
 import com.moon.catchup.careeritem.storage.CareerItemAttachmentStorage;
@@ -41,16 +41,16 @@ class CareerItemAttachmentRegistrationTest {
         doThrow(new IOException("storage unavailable")).when(storage).put(anyString(), anyString(), anyLong(), any());
         CareerItemAttachmentRepository repository = mock(CareerItemAttachmentRepository.class);
         PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);
-        CareerItemServiceImpl materials = mock(CareerItemServiceImpl.class);
+        CareerItemServiceImpl careerItems = mock(CareerItemServiceImpl.class);
         when(transactions.getTransaction(any())).thenAnswer(invocation ->
                 new SimpleTransactionStatus());
-        when(materials.validate(anyString(), anyMap())).thenReturn(
-                CareerItemDetails.fromValidated(CareerItemType.EXPERIENCE,
+        when(careerItems.validate(anyString(), anyMap())).thenReturn(
+                CareerItemDetailsVo.fromValidated(CareerItemType.EXPERIENCE,
                         Map.of("title", "example", "contribution", "example")));
         when(repository.lockAttempt(any(UUID.class), eq(false)))
                 .thenReturn(Optional.of(new CareerItemAttachmentRepository.UploadAttempt(List.of("test-key"), null)));
         CareerItemAttachmentRegistrationServiceImpl service = new CareerItemAttachmentRegistrationServiceImpl(repository,
-                transactionalOperations(repository, materials, storage, transactions), materials,
+                transactionalOperations(repository, careerItems, storage, transactions), careerItems,
                 new CareerItemAttachmentValidator());
         CareerItemAttachmentValidator.File file = new CareerItemAttachmentValidator.File(CareerItemAttachmentValidationTest.pdf(), "sample.pdf", "application/pdf");
         assertThrows(IllegalStateException.class,
@@ -60,25 +60,25 @@ class CareerItemAttachmentRegistrationTest {
 
     /** 커밋 응답이 유실되어도 완료된 저장의 객체를 삭제하지 않는지 확인한다. */
     @Test
-    void uncertainCommitReturnsConfirmedMaterialWithoutDeletingObjects() throws Exception {
+    void uncertainCommitReturnsConfirmedCareerItemWithoutDeletingObjects() throws Exception {
         CareerItemAttachmentStorage storage = mock(CareerItemAttachmentStorage.class);
         CareerItemAttachmentRepository repository = mock(CareerItemAttachmentRepository.class);
         PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);
-        CareerItemServiceImpl materials = mock(CareerItemServiceImpl.class);
+        CareerItemServiceImpl careerItems = mock(CareerItemServiceImpl.class);
         long completed = 42L;
         when(transactions.getTransaction(any())).thenAnswer(invocation ->
                 new SimpleTransactionStatus());
         doNothing().doThrow(new TransactionSystemException("Commit response lost"))
                 .doNothing().when(transactions).commit(any());
-        when(materials.validate(anyString(), anyMap())).thenReturn(
-                CareerItemDetails.fromValidated(CareerItemType.EXPERIENCE,
+        when(careerItems.validate(anyString(), anyMap())).thenReturn(
+                CareerItemDetailsVo.fromValidated(CareerItemType.EXPERIENCE,
                         Map.of("title", "example", "contribution", "example")));
-        when(materials.insert(any(CareerItemDetails.class))).thenReturn(completed);
+        when(careerItems.insert(any(CareerItemDetailsVo.class))).thenReturn(completed);
         when(repository.lockAttempt(any(UUID.class), eq(false)))
                 .thenReturn(Optional.of(new CareerItemAttachmentRepository.UploadAttempt(List.of("test-key"), null)))
                 .thenReturn(Optional.of(new CareerItemAttachmentRepository.UploadAttempt(List.of("test-key"), completed)));
         CareerItemAttachmentRegistrationServiceImpl service = new CareerItemAttachmentRegistrationServiceImpl(repository,
-                transactionalOperations(repository, materials, storage, transactions), materials,
+                transactionalOperations(repository, careerItems, storage, transactions), careerItems,
                 new CareerItemAttachmentValidator());
         CareerItemAttachmentValidator.File file = new CareerItemAttachmentValidator.File(CareerItemAttachmentValidationTest.pdf(), "sample.pdf", "application/pdf");
         assertEquals(completed, service.register(UUID.randomUUID(), "EXPERIENCE", Map.of(), List.of(file)));
@@ -87,9 +87,9 @@ class CareerItemAttachmentRegistrationTest {
 
     /** Spring 프록시를 통해 운영 코드와 같은 선언적 트랜잭션을 적용한다. */
     private static CareerItemAttachmentTransactionService transactionalOperations(
-            CareerItemAttachmentRepository repository, CareerItemServiceImpl materials,
+            CareerItemAttachmentRepository repository, CareerItemServiceImpl careerItems,
             CareerItemAttachmentStorage storage, PlatformTransactionManager manager) {
-        ProxyFactory proxy = new ProxyFactory(new CareerItemAttachmentTransactionService(repository, materials, storage));
+        ProxyFactory proxy = new ProxyFactory(new CareerItemAttachmentTransactionService(repository, careerItems, storage));
         TransactionInterceptor interceptor = new TransactionInterceptor();
         interceptor.setTransactionManager(manager);
         interceptor.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());

@@ -4,7 +4,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
-import com.moon.catchup.careeritem.domain.CareerItemAttachment;
+import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
 import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository.StoredAttachment;
 import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
 import com.moon.catchup.careeritem.storage.CareerItemAttachmentStorage;
@@ -25,16 +25,16 @@ public class CareerItemAttachmentServiceImpl implements CareerItemAttachmentServ
     /** 자료 식별자에 연결된 첨부 메타데이터를 조회한다. */
     @Override
     @Transactional(readOnly = true)
-    public List<CareerItemAttachment> list(long materialId) {
-        return this.repository.list(materialId);
+    public List<CareerItemAttachmentEntity> list(long careerItemId) {
+        return this.repository.list(careerItemId);
     }
 
     /** 자료에 속한 첨부를 확인하고 전체 또는 지정 범위의 원본을 연다. */
     @Override
-    public ReadableAttachment deliver(long materialId, UUID attachmentId, String range) {
-        StoredAttachment stored = this.repository.find(materialId, attachmentId)
+    public ReadableAttachment deliver(long careerItemId, UUID attachmentId, String range) {
+        StoredAttachment stored = this.repository.find(careerItemId, attachmentId)
                 .orElseThrow(() -> new ApiException(ErrorCode.ATTACHMENT_NOT_FOUND));
-        CareerItemAttachment attachment = stored.getAttachment();
+        CareerItemAttachmentEntity attachment = stored.getAttachment();
         long size = attachment.getSize();
 
         if (range == null) {

@@ -12,15 +12,15 @@ import lombok.Getter;
 @Getter
 public final class RegistrationRequest {
     @Schema(description = "자료 유형")
-    private final String materialType;
+    private final String careerItemType;
     @Schema(description = "자료 유형별 등록 항목")
     private final Map<String, Object> details;
 
     /** 요청 본문의 자료 유형과 입력 객체를 등록 요청에 담는다. */
     @JsonCreator
-    public RegistrationRequest(@JsonProperty("materialType") String materialType,
+    public RegistrationRequest(@JsonProperty("careerItemType") String careerItemType,
                                @JsonProperty("details") Map<String, Object> details) {
-        this.materialType = materialType;
+        this.careerItemType = careerItemType;
         this.details = details;
     }
 }

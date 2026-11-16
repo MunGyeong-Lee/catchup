@@ -9,7 +9,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 @EqualsAndHashCode
-public final class CareerItem {
+public final class CareerItemEntity {
     private final long id;
-    private final CareerItemDetails details;
+    private final CareerItemDetailsVo details;
 }

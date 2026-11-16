@@ -32,7 +32,7 @@ public final class ResponseVo {
     }
 
     /** 입력 검증 오류에만 항목별 오류를 포함한다. */
-    static ResponseVo failure(ErrorCode code, Map<String, String> fieldErrors) {
+    public static ResponseVo failure(ErrorCode code, Map<String, String> fieldErrors) {
         return new ResponseVo(code, code.getUserMessage(), null,
                 code == ErrorCode.VALIDATION_FAILED ? Map.copyOf(fieldErrors) : null);
     }

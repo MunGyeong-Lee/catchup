@@ -24,3 +24,12 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 CREATE INDEX IF NOT EXISTS attachments_career_item_index
     ON attachments(career_item_id);
+
+ALTER TABLE upload_attempts ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE upload_attempts ADD COLUMN IF NOT EXISTS target_career_item_id bigint;
+
+UPDATE upload_attempts SET completed_at = created_at
+WHERE career_item_id IS NOT NULL AND completed_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS upload_attempts_career_item_index
+    ON upload_attempts(career_item_id);

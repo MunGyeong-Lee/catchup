@@ -13,13 +13,13 @@ import org.springframework.http.ResponseEntity;
 public interface CareerItemAttachmentDocs {
     /** 자료에서 첨부 파일 목록을 조회하는 작업을 문서화한다. */
     @Operation(summary = "첨부 파일 목록 조회")
-    ResponseVo list(long materialId);
+    public ResponseVo list(long careerItemId);
 
     /** 전체 또는 바이트 범위의 첨부 원본을 여는 작업을 문서화한다. */
     @Operation(summary = "첨부 파일 다시 열기")
-    ResponseEntity<InputStreamResource> view(long materialId, UUID attachmentId, String range);
+    public ResponseEntity<InputStreamResource> view(long careerItemId, UUID attachmentId, String range);
 
     /** 첨부 원본을 내려받는 작업을 문서화한다. */
     @Operation(summary = "첨부 원본 내려받기")
-    ResponseEntity<InputStreamResource> download(long materialId, UUID attachmentId);
+    public ResponseEntity<InputStreamResource> download(long careerItemId, UUID attachmentId);
 }

@@ -2,7 +2,7 @@ package com.moon.catchup.careeritem.service;
 
 import java.io.InputStream;
 
-import com.moon.catchup.careeritem.domain.CareerItemAttachment;
+import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class ReadableAttachment {
-    private final CareerItemAttachment attachment;
+    private final CareerItemAttachmentEntity attachment;
     private final InputStream stream;
     private final long contentLength;
     private final String contentRange;

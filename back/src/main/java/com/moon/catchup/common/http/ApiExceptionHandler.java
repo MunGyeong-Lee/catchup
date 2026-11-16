@@ -15,12 +15,12 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 /** 요청 처리 중 발생한 예외를 일관된 JSON 응답으로 변환한다. */
 @RestControllerAdvice
-class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     /** 업무 오류의 응답 상태와 항목 검증 정보를 반영한다. */
     @ExceptionHandler(ApiException.class)
-    ResponseEntity<ResponseVo> handleApiException(ApiException exception) {
+    public ResponseEntity<ResponseVo> handleApiException(ApiException exception) {
         ErrorCode code = exception.getCode();
         if (code.getStatus().is5xxServerError() && exception.getCause() != null) {
             log.warn("Request failed: code={}", code, exception.getCause());
@@ -47,7 +47,7 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     /** 예상하지 못한 오류를 서버에 기록하고 사용자에게 일반 오류만 전달한다. */
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ResponseVo> handleUnexpected(Exception exception) {
+    public ResponseEntity<ResponseVo> handleUnexpected(Exception exception) {
         log.error("Unexpected request failure", exception);
         return ResponseEntity.internalServerError().contentType(MediaType.APPLICATION_JSON)
                 .body(ResponseVo.failure(ErrorCode.INTERNAL_ERROR, Map.of()));

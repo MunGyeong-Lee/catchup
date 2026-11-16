@@ -19,31 +19,31 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** 첨부 파일 목록, 브라우저 열기, 원본 내려받기의 HTTP 요청을 처리한다. */
 @RestController
-@RequestMapping("/api/career-materials/{materialId}/attachments")
+@RequestMapping("/api/career-items/{careerItemId}/attachments")
 @RequiredArgsConstructor
 public class CareerItemAttachmentController implements CareerItemAttachmentDocs {
-    private final CareerItemAttachmentService service;
+    private final CareerItemAttachmentService attachmentService;
 
-    /** 요청한 자료에 속한 첨부 파일의 목록을 반환한다. */
+    /** 자료의 첨부 파일 목록 조회 */
     @GetMapping
     @Override
-    public ResponseVo list(@PathVariable long materialId) {
-        List<AttachmentResponse> attachmentList = this.service.list(materialId).stream().map(AttachmentResponse::from).toList();
+    public ResponseVo list(@PathVariable long careerItemId) {
+        List<AttachmentResponse> attachmentList = this.attachmentService.list(careerItemId).stream().map(AttachmentResponse::from).toList();
         return ResponseVo.buildResponse(attachmentList);
     }
 
-    /** 첨부 파일을 브라우저에서 열 수 있도록 전체 또는 요청 바이트 범위를 반환한다. */
+    /** 첨부 파일 미리보기 */
     @GetMapping("/{attachmentId}/view")
     @Override
-    public ResponseEntity<InputStreamResource> view(@PathVariable long materialId, @PathVariable UUID attachmentId,
+    public ResponseEntity<InputStreamResource> view(@PathVariable long careerItemId, @PathVariable UUID attachmentId,
                            @RequestHeader(value = HttpHeaders.RANGE, required = false) String range) {
-        return AttachmentFileResponse.buildResponse(this.service.deliver(materialId, attachmentId, range), true);
+        return AttachmentFileResponse.buildResponse(this.attachmentService.deliver(careerItemId, attachmentId, range), true);
     }
 
-    /** 원본 파일 이름을 포함한 내려받기 응답을 반환한다. */
+    /** 첨부 원본 내려받기 */
     @GetMapping("/{attachmentId}/download")
     @Override
-    public ResponseEntity<InputStreamResource> download(@PathVariable long materialId, @PathVariable UUID attachmentId) {
-        return AttachmentFileResponse.buildResponse(this.service.deliver(materialId, attachmentId, null), false);
+    public ResponseEntity<InputStreamResource> download(@PathVariable long careerItemId, @PathVariable UUID attachmentId) {
+        return AttachmentFileResponse.buildResponse(this.attachmentService.deliver(careerItemId, attachmentId, null), false);
     }
 }

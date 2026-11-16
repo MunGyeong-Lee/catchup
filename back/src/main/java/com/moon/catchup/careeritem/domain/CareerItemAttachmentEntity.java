@@ -10,7 +10,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 @EqualsAndHashCode
-public final class CareerItemAttachment {
+public final class CareerItemAttachmentEntity {
     private final UUID id;
     private final String name;
     private final String contentType;

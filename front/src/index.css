@@ -32,7 +32,7 @@ label { font-weight: 600; }
 .required { color: #236843; font-size: .8rem; margin-left: .25rem; }
 .checkbox { display: flex; align-items: center; gap: .5rem; }
 
-input:not([type='checkbox']), select, textarea {
+input:not([type='checkbox']):not([type='radio']), select, textarea {
   width: 100%;
   min-height: 2.7rem;
   padding: .5rem .75rem;

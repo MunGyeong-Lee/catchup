@@ -2,7 +2,7 @@ package com.moon.catchup.careeritem.controller;
 
 import java.nio.charset.StandardCharsets;
 
-import com.moon.catchup.careeritem.domain.CareerItemAttachment;
+import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
 import com.moon.catchup.careeritem.service.ReadableAttachment;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -16,10 +16,10 @@ import org.springframework.http.ResponseEntity;
 
 /** 브라우저에서 다시 열거나 내려받을 첨부 원본의 HTTP 응답을 만든다. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-final class AttachmentFileResponse {
-    /** 서비스가 연 스트림에 HTTP 상태와 파일 응답 헤더를 적용한다. */
-    static ResponseEntity<InputStreamResource> buildResponse(ReadableAttachment delivery, boolean inline) {
-        CareerItemAttachment file = delivery.getAttachment();
+public final class AttachmentFileResponse {
+    /** 첨부 스트림에 미리보기 또는 다운로드 헤더를 설정하고, 전체 응답은 200, 바이트 범위 응답은 206으로 반환한다. */
+    public static ResponseEntity<InputStreamResource> buildResponse(ReadableAttachment delivery, boolean inline) {
+        CareerItemAttachmentEntity file = delivery.getAttachment();
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.noStore());
         headers.set("X-Content-Type-Options", "nosniff");
