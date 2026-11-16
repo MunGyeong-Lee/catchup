@@ -191,7 +191,6 @@
   color: var(--career-ink);
 }
 
-.career-registration-fields,
 .career-editor-files {
   display: grid;
   gap: 1rem;

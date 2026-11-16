@@ -178,43 +178,25 @@ function CareerItemForm({ edit, onList, onSaved }) {
   return (
     <main className="registration">
       <header>
-        {!edit && <p className="brand">캐쳡</p>}
-        {edit && <button type="button" className="career-editor-back" disabled={submitting} onClick={onList}>← 자료 목록</button>}
+        <button type="button" className="career-editor-back" disabled={submitting} onClick={onList}>← 자료 목록</button>
         <h1>{edit ? '취업 서류 자료 수정' : '취업 서류 자료 등록'}</h1>
-        {!edit && (
-          <>
-            <p>이력, 경험, 자격증을 한 건씩 기록해 두세요.</p>
-            <button type="button" disabled={submitting} onClick={onList}>자료 목록</button>
-          </>
-        )}
       </header>
       <form onSubmit={submitCareerItem}>
         <fieldset disabled={submitting}>
-          {edit ? (
-            <fieldset className="career-editor-type">
-              <legend>자료 유형</legend>
-              <div className="career-editor-options">
-                {Object.entries(careerItemTypes).map(([value, type]) => (
-                  <label key={value}>
-                    <input type="radio" name="careerItemType" value={value}
-                      checked={careerItemType === value} onChange={changeCareerItemType} />
-                    {type.label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ) : (
-            <div className="field">
-              <label htmlFor={`${prefix}careerItemType`}>자료 유형</label>
-              <select id={`${prefix}careerItemType`} value={careerItemType} onChange={changeCareerItemType}>
-                {Object.entries(careerItemTypes).map(([value, type]) => (
-                  <option key={value} value={value}>{type.label}</option>
-                ))}
-              </select>
+          <fieldset className="career-editor-type">
+            <legend>자료 유형</legend>
+            <div className="career-editor-options">
+              {Object.entries(careerItemTypes).map(([value, type]) => (
+                <label key={value}>
+                  <input type="radio" name="careerItemType" value={value}
+                    checked={careerItemType === value} onChange={changeCareerItemType} />
+                  {type.label}
+                </label>
+              ))}
             </div>
-          )}
-          <div className={edit ? 'career-editor-fields' : 'career-registration-fields'}>
-            {edit && <h2 className="career-editor-wide">기본 정보</h2>}
+          </fieldset>
+          <div className="career-editor-fields">
+            <h2 className="career-editor-wide">기본 정보</h2>
             {careerItemTypes[careerItemType].fields.map(field => (
               <div key={field.name} className={field.type === 'textarea' ? 'career-editor-wide' : undefined}>
                   <CareerItemField field={field} prefix={prefix} value={details[field.name]}
@@ -223,8 +205,8 @@ function CareerItemForm({ edit, onList, onSaved }) {
                 </div>
             ))}
           </div>
-          <div className={edit ? 'career-editor-files' : undefined}>
-            {edit && <h2>첨부 파일</h2>}
+          <div className="career-editor-files">
+            <h2>첨부 파일</h2>
             {edit?.attachments.length > 0 && (
               <div className="field">
                 <p>기존 첨부 파일</p>
@@ -249,9 +231,8 @@ function CareerItemForm({ edit, onList, onSaved }) {
               </div>
             )}
             <div className="field">
-              {!edit && <label htmlFor={`${prefix}attachments`}>첨부 파일</label>}
               <input id={`${prefix}attachments`} type="file" multiple
-                className={edit ? 'career-attachment-input' : undefined}
+                className="career-attachment-input"
                 aria-describedby={`${prefix}attachment-limits`}
                 accept="image/jpeg,image/png,image/webp,application/pdf"
                 onChange={event => {
@@ -261,8 +242,8 @@ function CareerItemForm({ edit, onList, onSaved }) {
                   setFieldErrors(previous => ({ ...previous, attachments: undefined }))
                   event.target.value = ''
                 }} />
-              <div className={edit ? 'career-attachment-picker' : undefined}>
-                {edit && <label htmlFor={`${prefix}attachments`}>파일 선택</label>}
+              <div className="career-attachment-picker">
+                <label htmlFor={`${prefix}attachments`}>파일 선택</label>
                 <small id={`${prefix}attachment-limits`}>JPEG, PNG, WebP, PDF · 파일당 20MiB, 첨부 합계 100MiB</small>
               </div>
               {fieldErrors.attachments && <small className="error" role="alert">{fieldErrors.attachments}</small>}
@@ -283,8 +264,8 @@ function CareerItemForm({ edit, onList, onSaved }) {
             </div>
           </div>
         </fieldset>
-        <div className={edit ? 'career-editor-actions' : undefined}>
-          {edit && <button className="career-editor-cancel" type="button" disabled={submitting} onClick={onList}>수정 취소</button>}
+        <div className="career-editor-actions">
+          <button className="career-editor-cancel" type="button" disabled={submitting} onClick={onList}>{edit ? '수정 취소' : '등록 취소'}</button>
           <button type="submit" disabled={submitting}>{submitting ? '저장 중…' : edit ? '수정 저장' : '자료 등록'}</button>
         </div>
         {notice && (
@@ -348,7 +329,8 @@ export default function App() {
 
   return (
     <>
-      <div hidden={showList || Boolean(editingId)}>
+      <div className="career-library career-editor" hidden={showList || Boolean(editingId)}>
+        <CareerLibraryHeader />
         <CareerItemForm onList={() => { setListNotice(null); setShowList(true) }} />
       </div>
       {editingId ? (
