@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 /** 첨부 파일 형식과 크기 검증의 경계 조건을 확인한다. */
-class CareerItemAttachmentValidationTest {
+public class CareerItemAttachmentValidationTest {
     private final CareerItemAttachmentValidator validator = new CareerItemAttachmentValidator();
 
     /** 실제 바이트로 형식을 판별하고 작은 파일 여러 개를 허용하는지 검증한다. */
     @Test
-    void identifiesSupportedFormatsFromBytesAndAllowsManyFiles() {
+    public void identifiesSupportedFormatsFromBytesAndAllowsManyFiles() {
         assertEquals("image/jpeg", validator.validate(List.of(file(0xff, 0xd8, 0xff))).getFirst().getType());
         assertEquals("image/png", validator.validate(List.of(file(137, 80, 78, 71, 13, 10, 26, 10))).getFirst().getType());
         assertEquals("image/webp", validator.validate(List.of(file(82, 73, 70, 70, 4, 0, 0, 0, 87, 69, 66, 80))).getFirst().getType());
@@ -26,13 +26,13 @@ class CareerItemAttachmentValidationTest {
 
     /** 허용 확장자로 위장한 파일을 거부하는지 검증한다. */
     @Test
-    void rejectsDisguisedFiles() {
+    public void rejectsDisguisedFiles() {
         assertThrows(IllegalArgumentException.class, () -> validator.validate(List.of(file(60, 104, 116, 109, 108))));
     }
 
     /** 파일당과 한 요청의 첨부 합계 크기 경계를 검증한다. */
     @Test
-    void appliesExactByteLimits() throws Exception {
+    public void appliesExactByteLimits() throws Exception {
         MockMultipartFile file = spy(pdf());
         when(file.getSize()).thenReturn(20L * 1024 * 1024);
         assertEquals(5, validator.validate(Collections.nCopies(5, file)).size());
@@ -42,7 +42,7 @@ class CareerItemAttachmentValidationTest {
     }
 
     /** 파일 형식 검증에 사용할 피디에프 표본을 만든다. */
-    static MockMultipartFile pdf() {
+    public static MockMultipartFile pdf() {
         return new MockMultipartFile("files", "sample.pdf", "application/octet-stream", "%PDF-1.7\n".getBytes());
     }
 

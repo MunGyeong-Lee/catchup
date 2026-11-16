@@ -26,11 +26,11 @@ public class CareerItemAttachmentCleanup {
 
     /** DB에서 삭제하는 첨부파일에 대응하는 S3 객체 키를 커밋 후 이벤트에 담는다. */
     @Getter
-    static final class Removed {
+    public static final class Removed {
         private final List<String> keys;
 
         /** 커밋 후 삭제할 S3 객체 키 목록을 불변 복사본으로 보관한다. */
-        Removed(List<String> keys) {
+        public Removed(List<String> keys) {
             this.keys = List.copyOf(keys);
         }
     }

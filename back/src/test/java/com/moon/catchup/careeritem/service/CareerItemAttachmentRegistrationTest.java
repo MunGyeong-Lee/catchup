@@ -34,10 +34,10 @@ import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
 /** 첨부 등록 서비스가 업로드와 데이터베이스 완료 실패 상황을 처리하는지 검증한다. */
-class CareerItemAttachmentRegistrationTest {
+public class CareerItemAttachmentRegistrationTest {
     /** 저장 실패를 알리고 업로드 대상으로 기록한 객체를 정리하는지 확인한다. */
     @Test
-    void storageFailureIsReportedAndCompensated() throws Exception {
+    public void storageFailureIsReportedAndCompensated() throws Exception {
         CareerItemAttachmentStorage storage = mock(CareerItemAttachmentStorage.class);
         doThrow(new IOException("storage unavailable")).when(storage).put(anyString(), anyString(), anyLong(), any());
         CareerItemAttachmentRepository repository = mock(CareerItemAttachmentRepository.class);
@@ -61,7 +61,7 @@ class CareerItemAttachmentRegistrationTest {
 
     /** 커밋 응답이 유실되어도 완료된 저장의 객체를 삭제하지 않는지 확인한다. */
     @Test
-    void uncertainCommitReturnsConfirmedCareerItemWithoutDeletingObjects() throws Exception {
+    public void uncertainCommitReturnsConfirmedCareerItemWithoutDeletingObjects() throws Exception {
         CareerItemAttachmentStorage storage = mock(CareerItemAttachmentStorage.class);
         CareerItemAttachmentRepository repository = mock(CareerItemAttachmentRepository.class);
         PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);

@@ -48,24 +48,24 @@ import tools.jackson.databind.ObjectMapper;
 
 /** HTTP 요청과 PostgreSQL을 연결해 첨부 등록과 읽기 계약을 검증한다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class CareerItemAttachmentIntegrationTest {
+public class CareerItemAttachmentIntegrationTest {
     private static final String CAREER_ITEM_PATH = "/api/career-items";
     private static final byte[] PDF = "%PDF-1.7\nTest document\n".getBytes(StandardCharsets.UTF_8);
 
-    @LocalServerPort int port;
-    @Autowired ObjectMapper mapper;
-    @Autowired JdbcTemplate jdbc;
-    @Autowired CareerItemAttachmentCleanup cleanup;
-    @MockitoBean CareerItemAttachmentStorage storage;
-    @MockitoSpyBean CareerItemServiceImpl careerItems;
-    @Autowired CareerItemAttachmentRegistrationServiceImpl recovery;
+    @LocalServerPort private int port;
+    @Autowired private ObjectMapper mapper;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private CareerItemAttachmentCleanup cleanup;
+    @MockitoBean private CareerItemAttachmentStorage storage;
+    @MockitoSpyBean private CareerItemServiceImpl careerItems;
+    @Autowired private CareerItemAttachmentRegistrationServiceImpl recovery;
 
     private final Map<String, byte[]> objects = new ConcurrentHashMap<>();
     private final HttpClient client = HttpClient.newHttpClient();
 
     /** 원본 저장, 읽기, 삭제를 재현하는 대체 객체 저장소를 준비한다. */
     @BeforeEach
-    void prepareStorage() throws Exception {
+    public void prepareStorage() throws Exception {
         doAnswer(call -> {
             objects.put(call.getArgument(0), call.<InputStream>getArgument(3).readAllBytes());
             return null;
@@ -88,7 +88,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 기존 등록, 목록 응답, 다시 열기, 바이트 범위, 원본 내려받기를 검증한다. */
     @Test
-    void keepsExistingRegistrationAndSupportsInlineRangeAndOriginalDownload() throws Exception {
+    public void keepsExistingRegistrationAndSupportsInlineRangeAndOriginalDownload() throws Exception {
         HttpResponse<byte[]> withoutFiles = send(request(CAREER_ITEM_PATH).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(careerItem("Legacy registration"))));
         assertEquals(201, withoutFiles.statusCode());
@@ -151,7 +151,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 잘못된 파일과 일부 업로드 실패 시 자료가 공개되지 않는지 확인한다. */
     @Test
-    void invalidFileAndPartialUploadDoNotPublishCareerItem() throws Exception {
+    public void invalidFileAndPartialUploadDoNotPublishCareerItem() throws Exception {
         UUID invalid = UUID.randomUUID();
         HttpResponse<byte[]> rejected = upload(invalid, "Invalid attachment", PDF, "<html>".getBytes(StandardCharsets.UTF_8));
         assertEquals(400, rejected.statusCode());
@@ -178,7 +178,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 즉시 정리가 실패하면 나중에 처리할 객체 키가 남는지 확인한다. */
     @Test
-    void failedCleanupLeavesKeysForRecovery() throws Exception {
+    public void failedCleanupLeavesKeysForRecovery() throws Exception {
         UUID requestId = UUID.randomUUID();
         doAnswer(call -> { throw new IOException("Upload failed"); })
                 .when(storage).put(anyString(), anyString(), anyLong(), any());
@@ -197,7 +197,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 자료 저장 실패가 데이터베이스에 반영되지 않고 전송한 원본이 정리되는지 확인한다. */
     @Test
-    void databaseFailureRollsBackCareerItemAndRemovesUploadedObject() throws Exception {
+    public void databaseFailureRollsBackCareerItemAndRemovesUploadedObject() throws Exception {
         UUID requestId = UUID.randomUUID();
         doAnswer(call -> {
             call.callRealMethod();
@@ -212,7 +212,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 같은 요청을 동시에 등록해도 동일한 자료 식별자를 돌려주는지 확인한다. */
     @Test
-    void concurrentSubmissionsWithSameIdentifierReturnOneCareerItem() throws Exception {
+    public void concurrentSubmissionsWithSameIdentifierReturnOneCareerItem() throws Exception {
         UUID requestId = UUID.randomUUID();
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             Future<HttpResponse<byte[]>> first = executor.submit(() -> upload(requestId, requestId.toString(), PDF));
@@ -228,7 +228,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 여러 개의 작은 파일을 한 요청에서 등록할 수 있는지 확인한다. */
     @Test
-    void multipartParserDoesNotImposeItsDefaultFileCountLimit() throws Exception {
+    public void multipartParserDoesNotImposeItsDefaultFileCountLimit() throws Exception {
         byte[][] copies = new byte[100][];
         Arrays.fill(copies, PDF);
         HttpResponse<byte[]> result = upload(UUID.randomUUID(), "Many small attachments", copies);
@@ -238,7 +238,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 자료 입력 오류를 첨부 여부와 관계없이 같은 필드 오류로 반환하는지 확인한다. */
     @Test
-    void missingTitleUsesTheSameFieldErrorWithOrWithoutAttachments() throws Exception {
+    public void missingTitleUsesTheSameFieldErrorWithOrWithoutAttachments() throws Exception {
         HttpResponse<byte[]> plain = send(request(CAREER_ITEM_PATH).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(careerItem(" "))));
         HttpResponse<byte[]> multipart = upload(UUID.randomUUID(), " ", PDF);
@@ -253,7 +253,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 파싱 실패와 업로드 제한 초과가 항목 오류 없이 공통 응답을 반환하는지 확인한다. */
     @Test
-    void malformedRequestAndOversizeUploadUseCommonErrors() throws Exception {
+    public void malformedRequestAndOversizeUploadUseCommonErrors() throws Exception {
         assertError(send(request(CAREER_ITEM_PATH).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString("{"))), 400, "INVALID_REQUEST");
         assertError(upload(UUID.randomUUID(), "Oversize attachment", new byte[20 * 1024 * 1024 + 1]),
@@ -282,7 +282,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 문서 인터페이스의 설명이 실제 OpenAPI 문서에 포함되는지 확인한다. */
     @Test
-    void publishesControllerDocumentationFromDocsInterfaces() throws Exception {
+    public void publishesControllerDocumentationFromDocsInterfaces() throws Exception {
         HttpResponse<byte[]> response = send(request("/v3/api-docs"));
         assertEquals(200, response.statusCode());
         JsonNode paths = mapper.readTree(response.body()).path("paths");
@@ -293,7 +293,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 자료 변경 실패가 기존 자료와 첨부 원본을 유지하는지 확인한다. */
     @Test
-    void failedEditKeepsExistingAttachment() throws Exception {
+    public void failedEditKeepsExistingAttachment() throws Exception {
         String path = createdWithAttachment("Before edit");
         String removed = successBody(send(request(path + "/attachments"))).get(0).get("attachmentId").asText();
         String body = """
@@ -311,7 +311,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 저장소 오류가 아니라 데이터베이스 삭제 오류일 때 자료와 원본을 모두 유지한다. */
     @Test
-    void failedDatabaseDeleteKeepsAttachment() throws Exception {
+    public void failedDatabaseDeleteKeepsAttachment() throws Exception {
         String path = createdWithAttachment("Before delete");
         long id = Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
         this.jdbc.update("INSERT INTO upload_attempts(request_id, object_keys, career_item_id) VALUES (?, '', ?)", UUID.randomUUID(), id);
@@ -328,7 +328,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 원본 삭제 실패를 일일 대조에서 복구하며 예약된 원본은 유지하는지 확인한다. */
     @Test
-    void reconcilesFailedDeletesAndProtectsPendingUpload() throws Exception {
+    public void reconcilesFailedDeletesAndProtectsPendingUpload() throws Exception {
         String path = createdWithAttachment("Cleanup sample");
         String removed = objects.keySet().iterator().next();
         String pending = UUID.randomUUID().toString();
@@ -355,7 +355,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 실제 수정 쓰기 오류가 함께 삭제한 첨부 행을 복구하는지 확인한다. */
     @Test
-    void failedUpdateRollsBackAttachmentRemoval() throws Exception {
+    public void failedUpdateRollsBackAttachmentRemoval() throws Exception {
         String path = createdWithAttachment("Before failed write");
         String removed = successBody(send(request(path + "/attachments"))).get(0).get("attachmentId").asText();
         this.jdbc.execute("""
@@ -379,7 +379,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 자료 삭제가 완료된 등록 요청을 재전송해도 자료가 다시 생성되지 않는지 확인한다. */
     @Test
-    void replayAfterDeletionDoesNotRecreateCareerItem() throws Exception {
+    public void replayAfterDeletionDoesNotRecreateCareerItem() throws Exception {
         UUID requestId = UUID.randomUUID();
         HttpResponse<byte[]> created = upload(requestId, "Deleted upload", PDF);
         assertEquals(201, created.statusCode());
@@ -391,7 +391,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 파일 추가와 제거를 함께 저장하고 같은 수정 요청을 다시 실행하지 않는다. */
     @Test
-    void multipartEditPreservesIdentityAndReusesCompletedAttempt() throws Exception {
+    public void multipartEditPreservesIdentityAndReusesCompletedAttempt() throws Exception {
         String path = createdWithAttachment("Before multipart edit");
         long id = Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
         String originalCreatedAt = this.jdbc.queryForObject(
@@ -415,7 +415,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 일일 대조가 실제 업로드 도중의 원본과 완료된 원본을 모두 보호한다. */
     @Test
-    void dailyScanPreservesActiveUploadAcrossCommit() throws Exception {
+    public void dailyScanPreservesActiveUploadAcrossCommit() throws Exception {
         CountDownLatch objectWritten = new CountDownLatch(1);
         CountDownLatch finishUpload = new CountDownLatch(1);
         doAnswer(call -> {
@@ -442,7 +442,7 @@ class CareerItemAttachmentIntegrationTest {
 
     /** 저장 시각이 같으면 자료 식별자가 큰 항목을 먼저 반환한다. */
     @Test
-    void listsLatestAndBreaksTiesById() throws Exception {
+    public void listsLatestAndBreaksTiesById() throws Exception {
         List<Long> expected = this.jdbc.queryForList("""
                 INSERT INTO career_items(career_item_type, details, created_at) VALUES
                     ('EXPERIENCE', '{"title":"Older sort sample"}', '2020-01-01T00:00:00Z'),

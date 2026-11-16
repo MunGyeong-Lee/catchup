@@ -26,7 +26,7 @@ public sealed interface ItemSummaryResponse {
     @Schema(description = "경험 요약")
     @Getter
     @AllArgsConstructor
-    final class SummaryResponse implements ItemSummaryResponse {
+    public final class SummaryResponse implements ItemSummaryResponse {
         @Schema(description = "자료 식별자")
         private final long careerItemId;
         @Schema(description = "자료 유형")
@@ -38,7 +38,7 @@ public sealed interface ItemSummaryResponse {
     @Schema(description = "이력 요약")
     @Getter
     @AllArgsConstructor
-    final class HistorySummaryResponse implements ItemSummaryResponse {
+    public final class HistorySummaryResponse implements ItemSummaryResponse {
         @Schema(description = "자료 식별자")
         private final long careerItemId;
         @Schema(description = "자료 유형")
@@ -54,7 +54,7 @@ public sealed interface ItemSummaryResponse {
     @Schema(description = "자격증 요약")
     @Getter
     @AllArgsConstructor
-    final class CertificationSummaryResponse implements ItemSummaryResponse {
+    public final class CertificationSummaryResponse implements ItemSummaryResponse {
         @Schema(description = "자료 식별자")
         private final long careerItemId;
         @Schema(description = "자료 유형")
