@@ -19,8 +19,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 @Slf4j
 public class CareerItemAttachmentCleanup {
-    private final CareerItemAttachmentRepository repository;
-    private final CareerItemAttachmentStorage storage;
+    private final CareerItemAttachmentRepository careerItemAttachmentRepository;
+    private final CareerItemAttachmentStorage careerItemAttachmentStorage;
     private final ExecutorService attachmentCleanupExecutor;
     private final AtomicBoolean reconciling = new AtomicBoolean();
 
@@ -54,8 +54,8 @@ public class CareerItemAttachmentCleanup {
     public void reconcile() {
         if (!this.reconciling.compareAndSet(false, true)) return;
         try {
-            List<String> listedKeys = this.storage.listKeys();
-            Set<String> protectedKeys = this.repository.protectedKeys();
+            List<String> listedKeys = this.careerItemAttachmentStorage.listKeys();
+            Set<String> protectedKeys = this.careerItemAttachmentRepository.protectedKeys();
             deleteKeys(listedKeys.stream().filter(key -> !protectedKeys.contains(key)).toList());
         } catch (RuntimeException exception) {
             log.warn("Attachment reconciliation skipped", exception);
@@ -68,7 +68,7 @@ public class CareerItemAttachmentCleanup {
     private void deleteKeys(List<String> keys) {
         for (String key : keys) {
             try {
-                this.storage.delete(key);
+                this.careerItemAttachmentStorage.delete(key);
             } catch (RuntimeException exception) {
                 log.warn("Attachment deletion failed: objectKey={}", key, exception);
             }

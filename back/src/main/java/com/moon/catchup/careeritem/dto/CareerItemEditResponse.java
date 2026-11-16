@@ -25,8 +25,8 @@ public final class CareerItemEditResponse {
 
     /** 현재 자료와 첨부 정보에서 응답 값을 만든다. */
     public static CareerItemEditResponse from(CareerItemEditVo edit) {
-        CareerItemDetailsVo details = edit.getCareerItem().getDetails();
-        return new CareerItemEditResponse(edit.getCareerItem().getId(), details.getType().name(), details.getFields(),
+        CareerItemDetailsVo details = edit.getDetails();
+        return new CareerItemEditResponse(edit.getCareerItemId(), details.getType().name(), details.getFields(),
                 edit.getAttachments().stream().map(AttachmentResponse::from).toList());
     }
 }

@@ -2,7 +2,7 @@ package com.moon.catchup.careeritem.dto;
 
 import java.util.UUID;
 
-import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
+import com.moon.catchup.careeritem.domain.CareerItemAttachmentSummaryVo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,8 +21,8 @@ public final class AttachmentResponse {
     @Schema(description = "크기(바이트)")
     private final long size;
 
-    /** 첨부 도메인 객체에서 목록 응답에 공개할 값을 복사한다. */
-    public static AttachmentResponse from(CareerItemAttachmentEntity file) {
+    /** 첨부파일 요약 VO에서 목록 응답에 공개할 값을 복사한다. */
+    public static AttachmentResponse from(CareerItemAttachmentSummaryVo file) {
         return new AttachmentResponse(file.getId(), file.getName(), file.getContentType(), file.getSize());
     }
 }

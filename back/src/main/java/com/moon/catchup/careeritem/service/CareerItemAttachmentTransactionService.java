@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
 import com.moon.catchup.careeritem.domain.CareerItemDetailsVo;
-import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository.UploadAttempt;
+import com.moon.catchup.careeritem.domain.UploadAttemptVo;
 import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
 import com.moon.catchup.careeritem.storage.CareerItemAttachmentStorage;
 import com.moon.catchup.common.http.ApiException;
@@ -24,20 +24,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CareerItemAttachmentTransactionService {
-    private final CareerItemAttachmentRepository repository;
-    private final CareerItemServiceImpl careerItems;
-    private final CareerItemAttachmentStorage storage;
+    private final CareerItemAttachmentRepository careerItemAttachmentRepository;
+    private final CareerItemServiceImpl careerItemService;
+    private final CareerItemAttachmentStorage careerItemAttachmentStorage;
 
     /** 업로드 전에 요청 식별자와 객체 키를 별도 트랜잭션에 기록한다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createAttempt(UUID requestId, List<String> keys) {
-        this.repository.createAttempt(requestId, keys);
+        this.careerItemAttachmentRepository.createAttempt(requestId, keys);
     }
 
     /** 수정 대상 자료를 포함해 업로드 요청을 예약한다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createEditAttempt(UUID requestId, List<String> keys, long careerItemId) {
-        this.repository.createAttempt(requestId, keys, careerItemId);
+        this.careerItemAttachmentRepository.createAttempt(requestId, keys, careerItemId);
     }
 
     /** 등록 시도를 잠그고 파일을 업로드한 뒤 자료와 첨부의 저장을 완료한다. */
@@ -56,29 +56,29 @@ public class CareerItemAttachmentTransactionService {
     /** 같은 요청의 재실행을 막고 원본을 먼저 저장한 뒤 첨부 정보를 확정한다. */
     private long storeFiles(UUID requestId, Long target, CareerItemDetailsVo details, List<UUID> removedIds,
                             List<CareerItemAttachmentValidator.File> files) {
-        UploadAttempt attempt = this.repository.lockAttempt(requestId, false)
+        UploadAttemptVo attempt = this.careerItemAttachmentRepository.lockAttempt(requestId, false)
                 .orElseThrow(() -> new IllegalStateException("Upload attempt was cleared"));
         requireTarget(attempt, target);
         if (attempt.isCompleted()) return requireCompletedItem(attempt);
 
         List<String> keys = attempt.getObjectKeys();
         if (keys.size() != files.size()) throw new ApiException(ErrorCode.INVALID_REQUEST);
-        if (target != null) this.careerItems.lock(target);
+        if (target != null) this.careerItemService.lock(target);
         uploadFiles(keys, files);
 
         long careerItemId;
         if (target == null) {
-            careerItemId = this.careerItems.insert(details);
+            careerItemId = this.careerItemService.insert(details);
         } else {
-            this.careerItems.modify(target, details, removedIds);
+            this.careerItemService.modify(target, details, removedIds);
             careerItemId = target;
         }
         for (int index = 0; index < keys.size(); index++) {
             CareerItemAttachmentValidator.File file = files.get(index);
-            this.repository.insert(careerItemId, new CareerItemAttachmentEntity(UUID.randomUUID(), file.getName(),
+            this.careerItemAttachmentRepository.insert(careerItemId, new CareerItemAttachmentEntity(UUID.randomUUID(), file.getName(),
                     file.getType(), file.getContent().getSize()), keys.get(index));
         }
-        this.repository.completeAttempt(requestId, careerItemId);
+        this.careerItemAttachmentRepository.completeAttempt(requestId, careerItemId);
         return careerItemId;
     }
 
@@ -87,7 +87,7 @@ public class CareerItemAttachmentTransactionService {
         for (int index = 0; index < keys.size(); index++) {
             CareerItemAttachmentValidator.File file = files.get(index);
             try (InputStream input = file.getContent().getInputStream()) {
-                this.storage.put(keys.get(index), file.getType(), file.getContent().getSize(), input);
+                this.careerItemAttachmentStorage.put(keys.get(index), file.getType(), file.getContent().getSize(), input);
             } catch (IOException exception) {
                 throw new UncheckedIOException(exception);
             }
@@ -95,12 +95,12 @@ public class CareerItemAttachmentTransactionService {
     }
 
     /** 등록 및 수정 요청 간 요청 식별자 재사용을 거부한다. */
-    private static void requireTarget(UploadAttempt attempt, Long target) {
+    private static void requireTarget(UploadAttemptVo attempt, Long target) {
         if (!Objects.equals(attempt.getTargetCareerItemId(), target)) throw new ApiException(ErrorCode.INVALID_REQUEST);
     }
 
     /** 이미 삭제된 완료 자료를 재등록하지 않도록 자료 식별자의 존재를 확인한다. */
-    private static long requireCompletedItem(UploadAttempt attempt) {
+    private static long requireCompletedItem(UploadAttemptVo attempt) {
         if (attempt.getCareerItemId() == null) throw new ApiException(ErrorCode.CAREER_ITEM_NOT_FOUND);
         return attempt.getCareerItemId();
     }
@@ -119,15 +119,15 @@ public class CareerItemAttachmentTransactionService {
 
     /** 요청 소유권을 확인한 뒤 트랜잭션에서 업로드 예약을 정리한다. */
     private Long cleanupAttempt(UUID requestId, boolean skipActive, Long target) {
-        Optional<UploadAttempt> attempts = this.repository.lockAttempt(requestId, skipActive);
+        Optional<UploadAttemptVo> attempts = this.careerItemAttachmentRepository.lockAttempt(requestId, skipActive);
         if (attempts.isEmpty()) return null;
 
-        UploadAttempt attempt = attempts.get();
+        UploadAttemptVo attempt = attempts.get();
         if (!skipActive) requireTarget(attempt, target);
         if (attempt.isCompleted()) return requireCompletedItem(attempt);
 
-        for (String key : attempt.getObjectKeys()) this.storage.delete(key);
-        this.repository.deleteAttempt(requestId);
+        for (String key : attempt.getObjectKeys()) this.careerItemAttachmentStorage.delete(key);
+        this.careerItemAttachmentRepository.deleteAttempt(requestId);
         return null;
     }
 }

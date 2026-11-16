@@ -31,9 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CareerItemServiceImpl implements CareerItemService {
 
-    private final CareerItemRepository repository;
-    private final CareerItemAttachmentRepository attachments;
-    private final ApplicationEventPublisher events;
+    private final CareerItemRepository careerItemRepository;
+    private final CareerItemAttachmentRepository careerItemAttachmentRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /** 자료 입력을 검증하고 등록한 자료 식별자를 반환한다. */
     @Override
@@ -80,31 +80,31 @@ public class CareerItemServiceImpl implements CareerItemService {
 
     /** 검증된 입력을 저장하고 데이터베이스가 발급한 식별자를 반환한다. */
     public long insert(CareerItemDetailsVo details) {
-        return this.repository.insert(details).getId();
+        return this.careerItemRepository.insert(details).getId();
     }
 
     /** 수정·삭제 전 자료를 잠그며 이미 삭제된 자료의 변경을 차단한다. */
     public void lock(long id) {
-        this.repository.find(id, true).orElseThrow(() -> new ApiException(ErrorCode.CAREER_ITEM_NOT_FOUND));
+        this.careerItemRepository.find(id, true).orElseThrow(() -> new ApiException(ErrorCode.CAREER_ITEM_NOT_FOUND));
     }
 
     /** DB에서 잠근 자료를 갱신하고 선택한 첨부 행을 삭제한 뒤 커밋 후 S3 원본 삭제를 요청한다. */
     public void modify(long id, CareerItemDetailsVo details, List<UUID> removedIds) {
         List<String> removedKeys = new ArrayList<>();
         for (UUID attachmentId : new LinkedHashSet<>(removedIds)) {
-            String key = this.attachments.remove(id, attachmentId).orElseThrow(() ->
+            String key = this.careerItemAttachmentRepository.remove(id, attachmentId).orElseThrow(() ->
                     ApiException.validation(Map.of("removeAttachmentIds", "이 자료의 첨부 파일만 삭제할 수 있어요.")));
             removedKeys.add(key);
         }
-        this.repository.update(id, details);
-        if (!removedKeys.isEmpty()) this.events.publishEvent(new CareerItemAttachmentCleanup.Removed(removedKeys));
+        this.careerItemRepository.update(id, details);
+        if (!removedKeys.isEmpty()) this.applicationEventPublisher.publishEvent(new CareerItemAttachmentCleanup.Removed(removedKeys));
     }
 
     /** 저장소에서 목록 표시용 자료 요약을 조회한다. */
     @Override
     @Transactional(readOnly = true)
     public List<CareerItemSummaryVo> list() {
-        return this.repository.list();
+        return this.careerItemRepository.list();
     }
 
     /** 자료 유형별 기간, 진행 상태, 링크 규칙을 검증한다. */

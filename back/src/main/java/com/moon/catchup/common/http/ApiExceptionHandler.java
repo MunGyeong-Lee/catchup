@@ -2,8 +2,7 @@ package com.moon.catchup.common.http;
 
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -15,8 +14,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 /** 요청 처리 중 발생한 예외를 일관된 JSON 응답으로 변환한다. */
 @RestControllerAdvice
+@Slf4j
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
-    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     /** 업무 오류의 응답 상태와 항목 검증 정보를 반영한다. */
     @ExceptionHandler(ApiException.class)

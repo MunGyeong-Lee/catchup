@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import com.moon.catchup.careeritem.domain.CareerItemDetailsVo;
 import com.moon.catchup.careeritem.domain.CareerItemType;
+import com.moon.catchup.careeritem.domain.UploadAttemptVo;
 import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
 import com.moon.catchup.careeritem.storage.CareerItemAttachmentStorage;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ class CareerItemAttachmentRegistrationTest {
                 CareerItemDetailsVo.fromValidated(CareerItemType.EXPERIENCE,
                         Map.of("title", "example", "contribution", "example")));
         when(repository.lockAttempt(any(UUID.class), eq(false)))
-                .thenReturn(Optional.of(new CareerItemAttachmentRepository.UploadAttempt(List.of("test-key"), null)));
+                .thenReturn(Optional.of(new UploadAttemptVo(List.of("test-key"), null)));
         CareerItemAttachmentRegistrationServiceImpl service = new CareerItemAttachmentRegistrationServiceImpl(repository,
                 transactionalOperations(repository, careerItems, storage, transactions), careerItems,
                 new CareerItemAttachmentValidator());
@@ -75,8 +76,8 @@ class CareerItemAttachmentRegistrationTest {
                         Map.of("title", "example", "contribution", "example")));
         when(careerItems.insert(any(CareerItemDetailsVo.class))).thenReturn(completed);
         when(repository.lockAttempt(any(UUID.class), eq(false)))
-                .thenReturn(Optional.of(new CareerItemAttachmentRepository.UploadAttempt(List.of("test-key"), null)))
-                .thenReturn(Optional.of(new CareerItemAttachmentRepository.UploadAttempt(List.of("test-key"), completed)));
+                .thenReturn(Optional.of(new UploadAttemptVo(List.of("test-key"), null)))
+                .thenReturn(Optional.of(new UploadAttemptVo(List.of("test-key"), completed)));
         CareerItemAttachmentRegistrationServiceImpl service = new CareerItemAttachmentRegistrationServiceImpl(repository,
                 transactionalOperations(repository, careerItems, storage, transactions), careerItems,
                 new CareerItemAttachmentValidator());

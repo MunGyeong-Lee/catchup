@@ -11,8 +11,7 @@ import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
 import com.moon.catchup.common.http.ApiException;
 import com.moon.catchup.common.http.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -21,12 +20,12 @@ import org.springframework.web.multipart.MultipartFile;
 /** 첨부 등록·수정에서 파일을 검증하고 DB 업로드 예약과 S3 원본 저장 흐름을 조율한다. */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CareerItemAttachmentRegistrationServiceImpl implements CareerItemAttachmentRegistrationService {
-    private static final Logger log = LoggerFactory.getLogger(CareerItemAttachmentRegistrationServiceImpl.class);
-    private final CareerItemAttachmentRepository repository;
+    private final CareerItemAttachmentRepository careerItemAttachmentRepository;
     private final CareerItemAttachmentTransactionService attachmentTransactionService;
-    private final CareerItemServiceImpl careerItems;
-    private final CareerItemAttachmentValidator validator;
+    private final CareerItemServiceImpl careerItemService;
+    private final CareerItemAttachmentValidator attachmentValidator;
 
     /** 업로드 파일을 검증하고 등록 실패를 공통 업무 오류로 전달한다. */
     @Override
@@ -43,7 +42,7 @@ public class CareerItemAttachmentRegistrationServiceImpl implements CareerItemAt
     public long updateUpload(UUID requestId, long careerItemId, String type, Map<String, Object> details,
                       List<UUID> removedIds, List<MultipartFile> files) {
         List<CareerItemAttachmentValidator.File> checkedFiles = validateFiles(files);
-        CareerItemDetailsVo careerItem = this.careerItems.validate(type, details);
+        CareerItemDetailsVo careerItem = this.careerItemService.validate(type, details);
         try {
             this.attachmentTransactionService.createEditAttempt(requestId, newKeys(checkedFiles.size()), careerItemId);
             return this.attachmentTransactionService.storeEdit(requestId, careerItemId, careerItem, removedIds, checkedFiles);
@@ -65,7 +64,7 @@ public class CareerItemAttachmentRegistrationServiceImpl implements CareerItemAt
     private List<CareerItemAttachmentValidator.File> validateFiles(List<MultipartFile> files) {
         try {
             if (files.isEmpty()) throw new IllegalArgumentException("첨부 파일을 선택해 주세요.");
-            return this.validator.validate(files);
+            return this.attachmentValidator.validate(files);
         } catch (CareerItemAttachmentValidator.SizeLimitExceededException exception) {
             throw new ApiException(ErrorCode.PAYLOAD_TOO_LARGE);
         } catch (IllegalArgumentException exception) {
@@ -83,7 +82,7 @@ public class CareerItemAttachmentRegistrationServiceImpl implements CareerItemAt
     /** 자료를 검증하고 업로드 시도를 기록한 뒤 등록 트랜잭션을 실행한다. */
     public long register(UUID requestId, String type, Map<String, Object> details,
                                                  List<CareerItemAttachmentValidator.File> files) {
-        CareerItemDetailsVo careerItem = this.careerItems.validate(type, details);
+        CareerItemDetailsVo careerItem = this.careerItemService.validate(type, details);
         List<String> keys = newKeys(files.size());
         try {
             this.attachmentTransactionService.createAttempt(requestId, keys);
@@ -108,7 +107,7 @@ public class CareerItemAttachmentRegistrationServiceImpl implements CareerItemAt
      */
     @Scheduled(fixedDelay = 60000)
     public void recoverAbandonedAttempts() {
-        for (UUID request : this.repository.expiredAttempts()) {
+        for (UUID request : this.careerItemAttachmentRepository.expiredAttempts()) {
             try {
                 this.attachmentTransactionService.cleanup(request, true);
             } catch (RuntimeException exception) {

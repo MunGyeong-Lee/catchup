@@ -2,7 +2,6 @@ package com.moon.catchup.careeritem.controller;
 
 import java.nio.charset.StandardCharsets;
 
-import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
 import com.moon.catchup.careeritem.service.ReadableAttachment;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -19,14 +18,13 @@ import org.springframework.http.ResponseEntity;
 public final class AttachmentFileResponse {
     /** 첨부 스트림에 미리보기 또는 다운로드 헤더를 설정하고, 전체 응답은 200, 바이트 범위 응답은 206으로 반환한다. */
     public static ResponseEntity<InputStreamResource> buildResponse(ReadableAttachment delivery, boolean inline) {
-        CareerItemAttachmentEntity file = delivery.getAttachment();
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.noStore());
         headers.set("X-Content-Type-Options", "nosniff");
         headers.set("Content-Security-Policy", "default-src 'none'");
-        headers.setContentType(MediaType.parseMediaType(file.getContentType()));
+        headers.setContentType(MediaType.parseMediaType(delivery.getContentType()));
         headers.setContentDisposition((inline ? ContentDisposition.inline() : ContentDisposition.attachment())
-                .filename(file.getName(), StandardCharsets.UTF_8).build());
+                .filename(delivery.getName(), StandardCharsets.UTF_8).build());
 
         boolean partial = delivery.getContentRange() != null;
         if (inline) headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");

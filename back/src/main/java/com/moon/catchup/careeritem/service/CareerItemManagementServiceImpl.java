@@ -22,28 +22,28 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class CareerItemManagementServiceImpl implements CareerItemManagementService {
-    private final CareerItemServiceImpl careerItems;
-    private final CareerItemRepository repository;
-    private final CareerItemAttachmentRepository attachments;
-    private final CareerItemAttachmentRegistrationServiceImpl uploads;
-    private final ApplicationEventPublisher events;
+    private final CareerItemServiceImpl careerItemService;
+    private final CareerItemRepository careerItemRepository;
+    private final CareerItemAttachmentRepository careerItemAttachmentRepository;
+    private final CareerItemAttachmentRegistrationServiceImpl attachmentRegistrationService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /** 수정 화면에 필요한 자료 입력과 첨부 메타데이터를 같은 DB 스냅샷에서 읽는다. */
     @Override
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CareerItemEditVo get(long id) {
-        CareerItemEntity item = this.repository.find(id, false)
+        CareerItemEntity item = this.careerItemRepository.find(id, false)
                 .orElseThrow(() -> new ApiException(ErrorCode.CAREER_ITEM_NOT_FOUND));
-        return new CareerItemEditVo(item, this.attachments.list(id));
+        return CareerItemEditVo.from(item, this.careerItemAttachmentRepository.list(id));
     }
 
     /** 자료를 잠근 뒤 검증한 입력과 첨부 제거를 함께 저장한다. */
     @Override
     @Transactional
     public long update(long id, String type, Map<String, Object> details, List<UUID> removedIds) {
-        CareerItemDetailsVo validated = this.careerItems.validate(type, details);
-        this.careerItems.lock(id);
-        this.careerItems.modify(id, validated, removedIds);
+        CareerItemDetailsVo validated = this.careerItemService.validate(type, details);
+        this.careerItemService.lock(id);
+        this.careerItemService.modify(id, validated, removedIds);
         return id;
     }
 
@@ -51,17 +51,17 @@ public class CareerItemManagementServiceImpl implements CareerItemManagementServ
     @Override
     public long updateWithFiles(long id, String type, Map<String, Object> details, List<UUID> removedIds,
                                 UUID requestId, List<MultipartFile> files) {
-        return this.uploads.updateUpload(requestId, id, type, details, removedIds, files);
+        return this.attachmentRegistrationService.updateUpload(requestId, id, type, details, removedIds, files);
     }
 
     /** 자료를 잠그고 첨부와 자료를 함께 삭제한 뒤 커밋 후 원본 정리를 예약한다. */
     @Override
     @Transactional
     public void delete(long id) {
-        this.careerItems.lock(id);
-        List<String> removedKeys = this.attachments.removeAll(id);
-        this.attachments.detachCompletedAttempts(id);
-        this.repository.delete(id);
-        if (!removedKeys.isEmpty()) this.events.publishEvent(new CareerItemAttachmentCleanup.Removed(removedKeys));
+        this.careerItemService.lock(id);
+        List<String> removedKeys = this.careerItemAttachmentRepository.removeAll(id);
+        this.careerItemAttachmentRepository.detachCompletedAttempts(id);
+        this.careerItemRepository.delete(id);
+        if (!removedKeys.isEmpty()) this.applicationEventPublisher.publishEvent(new CareerItemAttachmentCleanup.Removed(removedKeys));
     }
 }

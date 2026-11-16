@@ -4,8 +4,8 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
-import com.moon.catchup.careeritem.domain.CareerItemAttachmentEntity;
-import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository.StoredAttachment;
+import com.moon.catchup.careeritem.domain.CareerItemAttachmentSummaryVo;
+import com.moon.catchup.careeritem.domain.StoredAttachmentVo;
 import com.moon.catchup.careeritem.repository.CareerItemAttachmentRepository;
 import com.moon.catchup.careeritem.storage.CareerItemAttachmentStorage;
 import com.moon.catchup.common.http.ApiException;
@@ -19,26 +19,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CareerItemAttachmentServiceImpl implements CareerItemAttachmentService {
-    private final CareerItemAttachmentRepository repository;
-    private final CareerItemAttachmentStorage storage;
+    private final CareerItemAttachmentRepository careerItemAttachmentRepository;
+    private final CareerItemAttachmentStorage careerItemAttachmentStorage;
 
     /** 자료 식별자에 연결된 첨부 메타데이터를 조회한다. */
     @Override
     @Transactional(readOnly = true)
-    public List<CareerItemAttachmentEntity> list(long careerItemId) {
-        return this.repository.list(careerItemId);
+    public List<CareerItemAttachmentSummaryVo> list(long careerItemId) {
+        return this.careerItemAttachmentRepository.list(careerItemId);
     }
 
     /** 자료에 속한 첨부를 확인하고 전체 또는 지정 범위의 원본을 연다. */
     @Override
     public ReadableAttachment deliver(long careerItemId, UUID attachmentId, String range) {
-        StoredAttachment stored = this.repository.find(careerItemId, attachmentId)
+        StoredAttachmentVo stored = this.careerItemAttachmentRepository.find(careerItemId, attachmentId)
                 .orElseThrow(() -> new ApiException(ErrorCode.ATTACHMENT_NOT_FOUND));
-        CareerItemAttachmentEntity attachment = stored.getAttachment();
-        long size = attachment.getSize();
+        long size = stored.getSize();
 
         if (range == null) {
-            return new ReadableAttachment(attachment, openOriginal(stored.getKey(), null), size, null);
+            return new ReadableAttachment(stored.getName(), stored.getContentType(),
+                    openOriginal(stored.getKey(), null), size, null);
         }
 
         HttpRange requested = parseRange(range, size);
@@ -54,8 +54,8 @@ public class CareerItemAttachmentServiceImpl implements CareerItemAttachmentServ
 
         String objectRange = "bytes=" + first + "-" + last;
         String contentRange = "bytes " + first + "-" + last + "/" + size;
-        return new ReadableAttachment(attachment, openOriginal(stored.getKey(), objectRange),
-                last - first + 1, contentRange);
+        return new ReadableAttachment(stored.getName(), stored.getContentType(),
+                openOriginal(stored.getKey(), objectRange), last - first + 1, contentRange);
     }
 
     /** 바이트 범위를 해석하고 올바른 단일 범위만 허용한다. */
@@ -73,7 +73,7 @@ public class CareerItemAttachmentServiceImpl implements CareerItemAttachmentServ
     /** 전체 또는 지정 범위의 원본을 열고 저장소 실패를 공통 오류 코드로 변환한다. */
     private InputStream openOriginal(String key, String range) {
         try {
-            return this.storage.read(key, range);
+            return this.careerItemAttachmentStorage.read(key, range);
         } catch (RuntimeException exception) {
             throw new ApiException(ErrorCode.ATTACHMENT_STORAGE_UNAVAILABLE, exception);
         }
