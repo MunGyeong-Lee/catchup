@@ -308,6 +308,14 @@ public class SourceAttachmentIntegrationTest {
         assertTrue(registration.has("201"));
         assertTrue(registration.has("413"));
         JsonNode schemas = api.path("components").path("schemas");
+        JsonNode sourceListSchema = schemas.path("SourceListResponse");
+        assertEquals(3, sourceListSchema.path("oneOf").size());
+        assertEquals(
+                List.of("#/components/schemas/CertificationListResponse",
+                        "#/components/schemas/ExperienceListResponse",
+                        "#/components/schemas/HistoryListResponse"),
+                sourceListSchema.path("oneOf").valueStream()
+                        .map(schema -> schema.path("$ref").asText()).sorted().toList());
         JsonNode registerSchema = schemas.path("SourceRegisterRequest");
         assertEquals("sourceType", registerSchema.path("discriminator").path("propertyName").asText());
         assertEquals(3, registerSchema.path("oneOf").size());
@@ -607,6 +615,7 @@ public class SourceAttachmentIntegrationTest {
     public void returnsSourcePagesAndRejectsInvalidBounds() throws Exception {
         this.jdbc.update("""
                 INSERT INTO sources(source_type, name, details, created_at) VALUES
+                    ('EXPERIENCE', 'Page experience', '{}', '2099-01-01T00:00:00Z'),
                     ('CERTIFICATION', 'Page certificate', '{"issuedOn":"2026-01-01"}', '2099-01-01T00:00:00Z'),
                     ('CAREER_HISTORY', 'Page history', '{"historyType":"WORK","startMonth":"2026-02"}',
                         '2099-01-01T00:00:00Z')
@@ -622,12 +631,22 @@ public class SourceAttachmentIntegrationTest {
         JsonNode certificate = secondPage.path("items").get(0);
         assertEquals(1, firstPage.path("items").size());
         assertEquals(2, secondPage.path("pageNumber").asInt());
-        assertEquals("Page history", history.path("displayName").asText());
-        assertEquals("WORK", history.path("historyType").asText());
-        assertEquals("2026-02", history.path("startMonth").asText());
-        assertEquals("2099-01-01T00:00:00Z", history.path("createdAt").asText());
-        assertEquals("Page certificate", certificate.path("displayName").asText());
-        assertEquals("2026-01-01", certificate.path("issuedOn").asText());
+        JsonNode experience = defaultPage.path("items").get(2);
+        assertTrue(history.path("sourceId").isIntegralNumber());
+        assertTrue(certificate.path("sourceId").isIntegralNumber());
+        assertTrue(experience.path("sourceId").isIntegralNumber());
+        assertEquals(this.mapper.readTree("""
+                {"sourceId":%d,"sourceType":"CAREER_HISTORY","displayName":"Page history",
+                 "createdAt":"2099-01-01T00:00:00Z","historyType":"WORK","startMonth":"2026-02"}
+                """.formatted(history.path("sourceId").asLong())), history);
+        assertEquals(this.mapper.readTree("""
+                {"sourceId":%d,"sourceType":"CERTIFICATION","displayName":"Page certificate",
+                 "createdAt":"2099-01-01T00:00:00Z","issuedOn":"2026-01-01"}
+                """.formatted(certificate.path("sourceId").asLong())), certificate);
+        assertEquals(this.mapper.readTree("""
+                {"sourceId":%d,"sourceType":"EXPERIENCE","displayName":"Page experience",
+                 "createdAt":"2099-01-01T00:00:00Z"}
+                """.formatted(experience.path("sourceId").asLong())), experience);
         assertEquals(firstPage.path("totalElements").asLong(), firstPage.path("totalPages").asLong());
 
         JsonNode beyondLast = successBody(send(request(SOURCE_PATH + "?page_number=2147483647")));
