@@ -68,6 +68,9 @@ public class SourceServiceImpl implements SourceService {
      * <p>유형, 공통 이름, 상세 객체, 허용되지 않은 필드, 필드 형식, 필수 값, 유형별 값 규칙의
      * 순서로 확인한다. 형식은 필드 이름 오름차순으로, 필수 값은 {@link SourceType}에 선언된 순서로
      * 검사한다. 문자열의 앞뒤 공백은 제거하고 빈 상세 값은 생략한다.
+     * 지원회사는 회사명, 문체 및 어투와 기타 텍스트는 본문 필드를 필수 문자열로 받는다.
+     * 지원회사의 직무, 회사·공고 메모, 인재상, 직무 기술서는 선택 문자열이다.
+     * 동일한 규칙을 첨부 포함 여부와 관계없이 적용한다.
      * 첫 실패에서 필드 오류 한 건을 던지므로 요청 객체의 키 순서는 결과에 영향을 주지 않는다.
      *
      * @param sourceType 요청 소스 유형 코드
@@ -104,7 +107,8 @@ public class SourceServiceImpl implements SourceService {
                 if (!text.isBlank()) {
                     normalizedDetails.put(field, text.strip());
                 }
-            } else if (value instanceof YearMonth || value instanceof LocalDate || value == SourceDateFormat.Invalid.VALUE) {
+            } else if (isDateField(field)
+                    && (value instanceof YearMonth || value instanceof LocalDate || value == SourceDateFormat.Invalid.VALUE)) {
                 normalizedDetails.put(field, value);
             } else if (value != null) {
                 throw ApiException.validation(Map.of(detailErrorField(field), "입력 형식을 확인해 주세요."));
@@ -118,6 +122,19 @@ public class SourceServiceImpl implements SourceService {
 
         validateDetails(type, normalizedDetails);
         return SourceDetailsVo.fromValidated(type, sourceName.strip(), normalizedDetails);
+    }
+
+    /**
+     * 상세 필드가 등록 바인딩에서 날짜 또는 연월로 변환되는지 확인한다.
+     *
+     * @param field 상세 입력의 필드 이름
+     * @return 날짜 또는 연월 필드이면 true
+     */
+    private static boolean isDateField(String field) {
+        return switch (field) {
+            case "startMonth", "endMonth", "issuedOn", "expiresOn" -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -250,6 +267,10 @@ public class SourceServiceImpl implements SourceService {
         if (sourceType == SourceType.CERTIFICATION) {
             validatePeriod(details, "issuedOn", "expiresOn", LocalDate.class, SourceDateFormat::parseDate);
             validateLink(details, "verificationLink");
+            return;
+        }
+
+        if (sourceType != SourceType.CAREER_HISTORY && sourceType != SourceType.EXPERIENCE) {
             return;
         }
 

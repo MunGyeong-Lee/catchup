@@ -6,7 +6,7 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-/** 이력, 경험, 자격증과 각 소스 유형의 입력 항목을 정의한다. */
+/** 소스 유형과 공통 이름 외에 유형별로 받는 상세 입력 항목을 정의한다. */
 @Getter
 @RequiredArgsConstructor
 public enum SourceType {
@@ -21,7 +21,15 @@ public enum SourceType {
     /** 자격증 이름과 취득일을 담는 자격증이다. */
     CERTIFICATION(
             List.of("name", "issuedOn"),
-            Set.of("issuer", "expiresOn", "certificateNumber", "verificationLink"));
+            Set.of("issuer", "expiresOn", "certificateNumber", "verificationLink")),
+    /** 회사명과 지원 직무, 회사·공고 메모, 인재상, 직무 기술서를 담는 지원회사다. */
+    TARGET_COMPANY(
+            List.of("companyName"),
+            Set.of("jobTitle", "content", "idealCandidateProfile", "jobDescription")),
+    /** 문체 설명 또는 예문을 담는 문체 및 어투다. */
+    WRITING_STYLE(List.of("content"), Set.of()),
+    /** 참고 자료의 본문을 담는 기타 텍스트다. */
+    OTHER_TEXT(List.of("content"), Set.of());
 
     private final List<String> requiredFields;
     private final Set<String> optionalFields;
