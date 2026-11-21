@@ -121,7 +121,8 @@ public class SourceAttachmentIntegrationTest {
         JsonNode summary = summaries.valueStream()
                 .filter(item -> sourceId.equals(item.get("sourceId").asText())).findFirst().orElseThrow();
         assertEquals("EXPERIENCE", summary.get("sourceType").asText());
-        assertEquals("소스 Attachments", summary.get("displayName").asText());
+        assertEquals("소스 Attachments", summary.path("name").asText());
+        assertFalse(summary.has("displayName"));
         JsonNode registeredDetails = successBody(send(request(SOURCE_PATH + "/" + sourceId)));
         assertEquals("소스 Attachments", registeredDetails.path("name").asText());
         assertEquals("Attachments", registeredDetails.path("title").asText());
@@ -312,7 +313,11 @@ public class SourceAttachmentIntegrationTest {
         assertEquals(List.of("#/components/schemas/CertificationListResponse",
                         "#/components/schemas/ExperienceListResponse", "#/components/schemas/HistoryListResponse"),
                 listSchema.path("oneOf").valueStream().map(schema -> schema.path("$ref").asText()).sorted().toList());
-        assertTrue(schemas.path("ExperienceListResponse").path("properties").has("displayName"));
+        for (String schemaName : List.of("CertificationListResponse", "ExperienceListResponse", "HistoryListResponse")) {
+            JsonNode properties = schemas.path(schemaName).path("properties");
+            assertEquals("string", properties.path("name").path("type").asText());
+            assertFalse(properties.has("displayName"));
+        }
         JsonNode registerSchema = schemas.path("SourceRegisterRequest");
         assertEquals("sourceType", registerSchema.path("discriminator").path("propertyName").asText());
         assertEquals(3, registerSchema.path("oneOf").size());
@@ -627,11 +632,13 @@ public class SourceAttachmentIntegrationTest {
         JsonNode certificate = secondPage.path("items").get(0);
         assertEquals(1, firstPage.path("items").size());
         assertEquals(2, secondPage.path("pageNumber").asInt());
-        assertEquals("Page history", history.path("displayName").asText());
+        assertEquals("Page history", history.path("name").asText());
+        assertFalse(history.has("displayName"));
         assertEquals("WORK", history.path("historyType").asText());
         assertEquals("2026-02", history.path("startMonth").asText());
         assertEquals("2099-01-01T00:00:00Z", history.path("createdAt").asText());
-        assertEquals("Page certificate", certificate.path("displayName").asText());
+        assertEquals("Page certificate", certificate.path("name").asText());
+        assertFalse(certificate.has("displayName"));
         assertEquals("2026-01-01", certificate.path("issuedOn").asText());
         assertEquals(firstPage.path("totalElements").asLong(), firstPage.path("totalPages").asLong());
 

@@ -19,18 +19,18 @@ public sealed interface SourceListResponse {
     /**
      * 소스 유형에 맞는 목록 응답으로 요약 도메인 객체를 변환한다.
      *
-     * @param item 목록 응답의 원본 소스 요약
+     * @param source 목록 응답의 원본 소스 요약
      * @return 목록 표시용 소스 응답
      * @throws IllegalStateException 소스 유형의 전용 목록 응답이 아직 정의되지 않은 경우
      */
-    public static SourceListResponse from(SourceSummaryVo item) {
-        String sourceType = item.getType().name();
-        return switch (item.getType()) {
-            case CAREER_HISTORY -> new HistoryListResponse(item.getId(), sourceType, item.getDisplayName(),
-                    item.getCreatedAt(), item.getHistoryType(), item.getStartMonth());
-            case EXPERIENCE -> new ExperienceListResponse(item.getId(), sourceType, item.getDisplayName(), item.getCreatedAt());
-            case CERTIFICATION -> new CertificationListResponse(item.getId(), sourceType, item.getDisplayName(),
-                    item.getCreatedAt(), item.getIssuedOn());
+    public static SourceListResponse from(SourceSummaryVo source) {
+        String sourceType = source.getType().name();
+        return switch (source.getType()) {
+            case CAREER_HISTORY -> new HistoryListResponse(source.getId(), sourceType, source.getName(),
+                    source.getCreatedAt(), source.getHistoryType(), source.getStartMonth());
+            case EXPERIENCE -> new ExperienceListResponse(source.getId(), sourceType, source.getName(), source.getCreatedAt());
+            case CERTIFICATION -> new CertificationListResponse(source.getId(), sourceType, source.getName(),
+                    source.getCreatedAt(), source.getIssuedOn());
             case TARGET_COMPANY, WRITING_STYLE, OTHER_TEXT ->
                     throw new IllegalStateException("신규 소스 유형의 전용 목록 응답이 아직 정의되지 않았습니다.");
         };
@@ -45,8 +45,8 @@ public sealed interface SourceListResponse {
         private final long sourceId;
         @Schema(description = "소스 유형")
         private final String sourceType;
-        @Schema(description = "목록 표시 이름")
-        private final String displayName;
+        @Schema(description = "저장된 소스 이름")
+        private final String name;
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         @Schema(description = "DB 등록 시각 (UTC ISO 8601)", type = "string", format = "date-time")
         private final Instant createdAt;
@@ -61,8 +61,8 @@ public sealed interface SourceListResponse {
         private final long sourceId;
         @Schema(description = "소스 유형")
         private final String sourceType;
-        @Schema(description = "목록 표시 이름")
-        private final String displayName;
+        @Schema(description = "저장된 소스 이름")
+        private final String name;
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         @Schema(description = "DB 등록 시각 (UTC ISO 8601)", type = "string", format = "date-time")
         private final Instant createdAt;
@@ -82,8 +82,8 @@ public sealed interface SourceListResponse {
         private final long sourceId;
         @Schema(description = "소스 유형")
         private final String sourceType;
-        @Schema(description = "목록 표시 이름")
-        private final String displayName;
+        @Schema(description = "저장된 소스 이름")
+        private final String name;
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         @Schema(description = "DB 등록 시각 (UTC ISO 8601)", type = "string", format = "date-time")
         private final Instant createdAt;

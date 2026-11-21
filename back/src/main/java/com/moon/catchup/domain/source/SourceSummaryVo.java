@@ -18,7 +18,7 @@ import lombok.Getter;
 public final class SourceSummaryVo {
     private final long id;
     private final SourceType type;
-    private final String displayName;
+    private final String name;
     private final String historyType;
     private final YearMonth startMonth;
     private final LocalDate issuedOn;
