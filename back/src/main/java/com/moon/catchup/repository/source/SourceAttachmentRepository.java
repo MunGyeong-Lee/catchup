@@ -19,6 +19,15 @@ import org.springframework.data.repository.query.Param;
 public interface SourceAttachmentRepository
         extends Repository<SourceAttachmentEntity, UUID>, SourceAttachmentRemovalRepository {
     /**
+     * 목록 페이지의 소스 중 첨부 메타데이터가 존재하는 식별자만 한 번에 조회한다.
+     *
+     * @param sourceIdList 비어 있지 않은 목록 페이지의 소스 식별자 목록
+     * @return 첨부가 있는 소스의 중복 없는 식별자 집합
+     */
+    @Query("select distinct attachment.sourceId from SourceAttachmentEntity attachment where attachment.sourceId in :sourceIdList")
+    public Set<Long> findSourceIdsWithAttachments(@Param("sourceIdList") List<Long> sourceIdList);
+
+    /**
      * 업로드를 시작하기 전에 객체 키를 예약한다.
      *
      * @param requestId 재시도 시 재사용하는 업로드 요청 식별자

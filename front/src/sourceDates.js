@@ -15,11 +15,21 @@ export function formatSourceDate(value) {
 export function formatSourceCreatedAt(value, timeZone) {
   if (!value) return ''
   const createdAt = new Date(value)
-  const options = { dateStyle: 'medium', timeStyle: 'short' }
-  try {
-    return new Intl.DateTimeFormat('ko-KR', { ...options, timeZone: timeZone || undefined }).format(createdAt)
-  } catch (error) {
-    if (!(error instanceof RangeError) || Number.isNaN(createdAt.getTime())) return ''
-    return new Intl.DateTimeFormat('ko-KR', options).format(createdAt)
+  if (Number.isNaN(createdAt.getTime())) return ''
+
+  const options = {
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hourCycle: 'h12',
   }
+  let formatter
+  try {
+    formatter = new Intl.DateTimeFormat('en-US', { ...options, timeZone: timeZone || undefined })
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error
+    formatter = new Intl.DateTimeFormat('en-US', options)
+  }
+  const { year, month, day, hour, minute, dayPeriod } = Object.fromEntries(
+    formatter.formatToParts(createdAt).map(({ type, value }) => [type, value]),
+  )
+  return `${year}. ${month}. ${day}. ${hour}:${minute}${dayPeriod}`
 }

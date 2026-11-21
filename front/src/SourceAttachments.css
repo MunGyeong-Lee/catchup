@@ -11,7 +11,7 @@
   padding: .25rem 0;
 }
 
-.career-attachments li + li { border-top: 1px solid #eee5da; }
+.career-attachments li + li { border-top: 1px solid #e7e7e7; }
 
 .career-attachment-name {
   flex: 1;
@@ -31,12 +31,12 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: .5rem;
-  color: #66554a;
+  color: #626262;
 }
 
 .career-attachment-links a:hover {
-  background: #f7f1e9;
-  color: #a5221e;
+  background: #efefef;
+  color: #252525;
 }
 
 .career-attachment-links svg {

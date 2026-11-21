@@ -38,7 +38,7 @@ public class SourceTypeSchemaTest {
                         INSERT INTO sources(source_type, name, details) VALUES
                             ('CAREER_HISTORY', '이력', '{}'), ('EXPERIENCE', '경험', '{}'),
                             ('CERTIFICATION', '자격증', '{}'), ('TARGET_COMPANY', '지원회사', '{}'),
-                            ('WRITING_STYLE', '문체', '{}'), ('OTHER_TEXT', '기타 텍스트', '{}')
+                            ('WRITING_STYLE', '문체', '{}'), ('OTHER_TEXT', '기타', '{}')
                         """));
                 assertRejectedType(statement, "UNKNOWN");
             } finally {
