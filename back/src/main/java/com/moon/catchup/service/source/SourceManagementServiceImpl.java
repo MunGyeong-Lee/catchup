@@ -37,9 +37,9 @@ public class SourceManagementServiceImpl implements SourceManagementService {
     @Override
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public SourceEditVo get(long id) {
-        SourceEntity item = this.sourceRepository.find(id, false)
+        SourceEntity source = this.sourceRepository.find(id, false)
                 .orElseThrow(() -> new ApiException(ErrorCode.SOURCE_NOT_FOUND));
-        return SourceEditVo.from(item, this.sourceAttachmentRepository.list(id));
+        return SourceEditVo.from(source, this.sourceAttachmentRepository.list(id));
     }
 
     /**

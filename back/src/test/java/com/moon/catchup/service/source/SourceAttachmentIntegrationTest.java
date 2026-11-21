@@ -119,7 +119,7 @@ public class SourceAttachmentIntegrationTest {
 
         JsonNode summaries = successBody(send(request(SOURCE_PATH))).path("items");
         JsonNode summary = summaries.valueStream()
-                .filter(item -> sourceId.equals(item.get("sourceId").asText())).findFirst().orElseThrow();
+                .filter(source -> sourceId.equals(source.get("sourceId").asText())).findFirst().orElseThrow();
         assertEquals("EXPERIENCE", summary.get("sourceType").asText());
         assertEquals("소스 Attachments", summary.path("name").asText());
         assertFalse(summary.has("displayName"));
@@ -447,18 +447,18 @@ public class SourceAttachmentIntegrationTest {
         String requestId = UUID.randomUUID().toString();
         assertEquals(200, multipart(path, "PUT", requestId, update, PDF).statusCode());
         assertEquals(200, multipart(path, "PUT", requestId, update, PDF).statusCode());
-        JsonNode item = successBody(send(request(path)));
-        assertEquals(id, item.path("sourceId").asLong());
-        assertEquals("CERTIFICATION", item.path("sourceType").asText());
-        assertEquals("Updated name", item.path("name").asText());
-        assertEquals("Updated item", item.path("certificateName").asText());
-        assertEquals("2024-02-29", item.path("issuedOn").asText());
-        assertEquals("2025-01-01", item.path("expiresOn").asText());
-        assertEquals(originalCreatedAt, Instant.parse(item.path("createdAt").asText()));
-        assertTrue(item.path("createdAt").asText().endsWith("Z"));
-        assertFalse(item.has("details"));
-        assertEquals(1, item.path("attachments").size());
-        assertFalse(removed.equals(item.path("attachments").get(0).path("attachmentId").asText()));
+        JsonNode sourceResponse = successBody(send(request(path)));
+        assertEquals(id, sourceResponse.path("sourceId").asLong());
+        assertEquals("CERTIFICATION", sourceResponse.path("sourceType").asText());
+        assertEquals("Updated name", sourceResponse.path("name").asText());
+        assertEquals("Updated item", sourceResponse.path("certificateName").asText());
+        assertEquals("2024-02-29", sourceResponse.path("issuedOn").asText());
+        assertEquals("2025-01-01", sourceResponse.path("expiresOn").asText());
+        assertEquals(originalCreatedAt, Instant.parse(sourceResponse.path("createdAt").asText()));
+        assertTrue(sourceResponse.path("createdAt").asText().endsWith("Z"));
+        assertFalse(sourceResponse.has("details"));
+        assertEquals(1, sourceResponse.path("attachments").size());
+        assertFalse(removed.equals(sourceResponse.path("attachments").get(0).path("attachmentId").asText()));
         assertEquals("2024-02-29", this.jdbc.queryForObject(
                 "SELECT details ->> 'issuedOn' FROM sources WHERE source_id = ?", String.class, id));
     }
@@ -608,7 +608,7 @@ public class SourceAttachmentIntegrationTest {
                 RETURNING source_id
                 """, Long.class).reversed();
         List<Long> actual = successBody(send(request(SOURCE_PATH + "?page_size=100"))).path("items").valueStream()
-                .map(item -> item.path("sourceId").asLong()).filter(expected::contains).toList();
+                .map(source -> source.path("sourceId").asLong()).filter(expected::contains).toList();
         assertEquals(expected, actual);
     }
 
