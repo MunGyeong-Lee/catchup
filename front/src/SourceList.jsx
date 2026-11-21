@@ -30,7 +30,7 @@ function DeleteConfirmation({ item, deleting, onCancel, onDelete }) {
       event.preventDefault()
       if (!deleting) onCancel()
     }}>
-      <h2 id="delete-title">‘{item.displayName}’ 소스를 삭제할까요?</h2>
+      <h2 id="delete-title">‘{item.name}’ 소스를 삭제할까요?</h2>
       {item.hasAttachments && <p>첨부 파일도 함께 삭제돼요.</p>}
       <button type="button" disabled={deleting} onClick={onCancel}>취소</button>{' '}
       <button type="button" disabled={deleting} onClick={onDelete}>삭제</button>
@@ -147,7 +147,7 @@ export default function SourceList({ onRegister, onEdit, notice }) {
                   <span className="career-card-type" data-type={source.sourceType}>
                     {typeNames[source.sourceType]}
                   </span>
-                  <h2>{source.displayName}</h2>
+                  <h2>{source.name}</h2>
                   <p className="career-card-meta">
                     {[historyNames[source.historyType], formatSourceMonth(source.startMonth),
                       source.issuedOn && `취득일 ${formatSourceDate(source.issuedOn)}`].filter(Boolean).join(' · ')}
