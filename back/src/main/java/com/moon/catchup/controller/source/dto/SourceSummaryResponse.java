@@ -21,6 +21,7 @@ public sealed interface SourceSummaryResponse {
      *
      * @param item 목록 응답의 원본 소스 요약
      * @return 목록 표시용 소스 응답
+     * @throws IllegalStateException 소스 유형의 전용 목록 응답이 아직 정의되지 않은 경우
      */
     public static SourceSummaryResponse from(SourceSummaryVo item) {
         String sourceType = item.getType().name();
@@ -30,6 +31,8 @@ public sealed interface SourceSummaryResponse {
             case EXPERIENCE -> new SummaryResponse(item.getId(), sourceType, item.getDisplayName(), item.getCreatedAt());
             case CERTIFICATION -> new CertificationSummaryResponse(item.getId(), sourceType, item.getDisplayName(),
                     item.getCreatedAt(), item.getIssuedOn());
+            case TARGET_COMPANY, WRITING_STYLE, OTHER_TEXT ->
+                    throw new IllegalStateException("신규 소스 유형의 전용 목록 응답이 아직 정의되지 않았습니다.");
         };
     }
 
