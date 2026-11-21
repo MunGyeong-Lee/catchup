@@ -1,20 +1,76 @@
 import { useEffect, useRef, useState } from 'react'
-import SourceAttachments from './SourceAttachments.jsx'
 import CareerLibraryHeader from './CareerLibraryHeader.jsx'
 import { formatSourceCreatedAt, formatSourceDate, formatSourceMonth } from './sourceDates.js'
+import { sourceTypeLabels } from './sourceTypeLabels.js'
 import './SourceList.css'
 
-const typeNames = { CAREER_HISTORY: '이력', EXPERIENCE: '경험', CERTIFICATION: '자격증' }
+const SOURCE_PAGE_SIZE = 9
+
 const historyNames = { WORK: '근무', STUDY: '학업', TRAINING: '교육', OTHER: '기타' }
 
-function SourceAttachmentsDisclosure({ sourceId }) {
-  const [open, setOpen] = useState(false)
+async function fetchSourcePage(pageNumber, signal) {
+  const response = await fetch(`/api/sources?page_number=${pageNumber}&page_size=${SOURCE_PAGE_SIZE}`, {
+    signal, cache: 'no-store',
+  })
+  if (!response.ok) throw new Error('Source list failed')
+  const payload = await response.json()
+  if (payload.error !== null || !Array.isArray(payload.response?.items)) throw new Error('Invalid list response')
+  return payload.response
+}
 
+async function fetchCategorySources(category, signal) {
+  const sourceList = []
+  let nextPage = 1
+  let totalPages
+
+  do {
+    const sourcePage = await fetchSourcePage(nextPage, signal)
+    sourceList.push(...sourcePage.items.filter(source => source.sourceType === category))
+    totalPages = sourcePage.totalPages
+    nextPage += 1
+  } while (nextPage <= totalPages)
+
+  return sourceList
+}
+
+function SourceCard({ source, timeZone, pending, onEdit, onDelete }) {
   return (
-    <details onToggle={event => setOpen(event.currentTarget.open)}>
-      <summary>첨부 파일</summary>
-      {open && <SourceAttachments sourceId={sourceId} />}
-    </details>
+    <article className="career-card">
+      <span className="career-card-type" data-type={source.sourceType}>{sourceTypeLabels[source.sourceType]}</span>
+      <div className="career-card-title">
+        <h2>{source.name}</h2>
+        {source.hasAttachments && (
+          <span className="career-clip-indicator" role="img" aria-label="첨부 파일 있음">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 11.5-8.6 8.6a5 5 0 0 1-7.1-7.1l10-10a3.5 3.5 0 0 1 5 5l-10 10a2 2 0 0 1-2.8-2.8l8.6-8.6" />
+            </svg>
+          </span>
+        )}
+      </div>
+      <span className="career-card-meta">
+        {[historyNames[source.historyType], formatSourceMonth(source.startMonth),
+          source.issuedOn && `취득일 ${formatSourceDate(source.issuedOn)}`].filter(Boolean).join(' · ')}
+      </span>
+      {source.createdAt && (
+        <span className="career-card-meta">
+          <time dateTime={source.createdAt}>{formatSourceCreatedAt(source.createdAt, timeZone)}</time>
+        </span>
+      )}
+      <div className="career-card-actions">
+        <button type="button" disabled={pending} onClick={() => onEdit(source.sourceId)}
+          aria-label={`${source.name} 수정`} title="수정">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m14 6 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z" />
+          </svg>
+        </button>
+        <button type="button" disabled={pending} onClick={() => onDelete(source)}
+          aria-label={`${source.name} 삭제`} title="삭제">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" />
+          </svg>
+        </button>
+      </div>
+    </article>
   )
 }
 
@@ -30,6 +86,7 @@ function DeleteConfirmation({ source, deleting, onCancel, onDelete }) {
       event.preventDefault()
       if (!deleting) onCancel()
     }}>
+      <span className="career-card-meta">{sourceTypeLabels[source.sourceType]}</span>
       <h2 id="delete-title">‘{source.name}’ 소스를 삭제할까요?</h2>
       {source.hasAttachments && <p>첨부 파일도 함께 삭제돼요.</p>}
       <button type="button" disabled={deleting} onClick={onCancel}>취소</button>{' '}
@@ -38,25 +95,51 @@ function DeleteConfirmation({ source, deleting, onCancel, onDelete }) {
   )
 }
 
-export default function SourceList({ onRegister, onEdit, notice }) {
+function SourcePagination({ pageNumber, totalPages, pending, onChange }) {
+  const firstPage = Math.max(1, Math.min(pageNumber - 1, totalPages - 2))
+  const visiblePages = Array.from({ length: Math.min(3, totalPages) }, (_, index) => firstPage + index)
+
+  return (
+    <nav aria-label="소스 목록 페이지" className="career-pagination">
+      <button type="button" aria-label="이전 페이지" disabled={pending || pageNumber === 1}
+        onClick={() => onChange(pageNumber - 1)}>«</button>
+      {visiblePages.map(page => (
+        <button key={page} type="button" aria-label={`${page} 페이지`}
+          aria-current={page === pageNumber ? 'page' : undefined} disabled={pending}
+          onClick={() => { if (page !== pageNumber) onChange(page) }}>
+          {page}
+        </button>
+      ))}
+      <button type="button" aria-label="다음 페이지" disabled={pending || pageNumber === totalPages}
+        onClick={() => onChange(pageNumber + 1)}>»</button>
+    </nav>
+  )
+}
+
+export default function SourceList({ onRegister, onEdit, notify }) {
   const timeZone = localStorage.getItem('catchup.timeZone')
   const [result, setResult] = useState(null)
+  const [category, setCategory] = useState('')
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [pageNumber, setPageNumber] = useState(1)
   const [retry, setRetry] = useState(0)
   const [confirming, setConfirming] = useState(null)
   const [pending, setPending] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [deletionNotice, setDeletionNotice] = useState(null)
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(`/api/sources?page_number=${pageNumber}`, { signal: controller.signal, cache: 'no-store' })
-      .then(async response => {
-        if (!response.ok) throw new Error('Source list failed')
-        const payload = await response.json()
-        if (payload.error !== null || !Array.isArray(payload.response?.items)) throw new Error('Invalid list response')
-        return payload.response
+    const request = category
+      ? fetchCategorySources(category, controller.signal).then(sourceList => {
+        const start = (pageNumber - 1) * SOURCE_PAGE_SIZE
+        return {
+          items: sourceList.slice(start, start + SOURCE_PAGE_SIZE),
+          totalPages: Math.ceil(sourceList.length / SOURCE_PAGE_SIZE),
+        }
       })
+      : fetchSourcePage(pageNumber, controller.signal)
+
+    request
       .then(page => {
         if (controller.signal.aborted) return
         const lastPage = Math.max(1, page.totalPages)
@@ -67,10 +150,12 @@ export default function SourceList({ onRegister, onEdit, notice }) {
         setResult(page)
       })
       .catch(() => {
-        if (!controller.signal.aborted) setResult({ failed: true })
+        if (controller.signal.aborted) return
+        setResult({ failed: true })
+        notify('error', '소스를 불러오지 못했어요.')
       })
     return () => controller.abort()
-  }, [pageNumber, retry])
+  }, [category, pageNumber, retry, notify])
 
   function changePage(nextPage) {
     setResult(null)
@@ -78,12 +163,11 @@ export default function SourceList({ onRegister, onEdit, notice }) {
   }
 
   async function prepareDelete(source) {
-    setDeletionNotice(null)
     setPending(true)
     try {
       const response = await fetch(`/api/sources/${source.sourceId}`, { cache: 'no-store' })
       if (response.status === 404) {
-        setDeletionNotice({ error: '소스를 찾을 수 없어요.' })
+        notify('error', '소스를 찾을 수 없어요.')
         return
       }
       if (!response.ok) throw new Error('Unable to load attachment information')
@@ -91,7 +175,7 @@ export default function SourceList({ onRegister, onEdit, notice }) {
       if (payload.error !== null || !Array.isArray(payload.response?.attachments)) throw new Error('Invalid edit response')
       setConfirming({ ...source, hasAttachments: payload.response.attachments.length > 0 })
     } catch {
-      setDeletionNotice({ error: '소스를 불러오지 못했어요. 다시 시도해 주세요.' })
+      notify('error', '소스를 불러오지 못했어요. 다시 시도해 주세요.')
     } finally {
       setPending(false)
     }
@@ -102,15 +186,15 @@ export default function SourceList({ onRegister, onEdit, notice }) {
     try {
       const response = await fetch(`/api/sources/${confirming.sourceId}`, { method: 'DELETE' })
       if (response.status === 404) {
-        setDeletionNotice({ error: '소스를 찾을 수 없어요.' })
+        notify('error', '소스를 찾을 수 없어요.')
         return
       }
       if (!response.ok || (await response.json()).error !== null) throw new Error('Delete failed')
       setResult(null)
       setRetry(value => value + 1)
-      setDeletionNotice({ success: '소스를 삭제했어요.' })
+      notify('success', '소스를 삭제했어요.')
     } catch {
-      setDeletionNotice({ error: '소스를 삭제하지 못했어요. 다시 시도해 주세요.' })
+      notify('error', '소스를 삭제하지 못했어요. 다시 시도해 주세요.')
     } finally {
       setConfirming(null)
       setDeleting(false)
@@ -118,65 +202,66 @@ export default function SourceList({ onRegister, onEdit, notice }) {
   }
 
   return (
-    <div className="career-library">
+    <div className="career-library career-browser">
       <CareerLibraryHeader />
-      <main className="career-library-content">
-        <div className="career-library-heading">
-          <h1>커리어 소스함</h1>
-          <button className="career-register-button" type="button" disabled={pending} onClick={onRegister}>
-            소스 등록하기
+      <div className="career-library-layout">
+        <nav className="career-categories" aria-label="소스 카테고리">
+          <button className="career-category-toggle" type="button" aria-expanded={categoriesOpen}
+            aria-controls="career-category-panel" onClick={() => setCategoriesOpen(open => !open)}>
+            자료보관
           </button>
-        </div>
-        {deletionNotice?.error && <p role="alert">{deletionNotice.error}</p>}
-        {(deletionNotice?.success ?? (!deletionNotice && notice)) && <p role="status">{deletionNotice?.success ?? notice}</p>}
-        {confirming && <DeleteConfirmation source={confirming} deleting={deleting}
-          onCancel={() => setConfirming(null)} onDelete={deleteSource} />}
-        {!result && <p role="status">소스를 불러오는 중이에요.</p>}
-        {result?.failed && (
-          <>
-            <p role="alert">소스를 불러오지 못했어요.</p>
-            <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>다시 시도</button>
-          </>
-        )}
-        {result?.items?.length === 0 && <p>아직 등록한 소스가 없어요.</p>}
-        {result?.items?.length > 0 && (
-          <ul className="career-card-grid" aria-label="소스 목록">
-            {result.items.map(source => (
-              <li key={source.sourceId}>
-                <article className="career-card">
-                  <span className="career-card-type" data-type={source.sourceType}>
-                    {typeNames[source.sourceType]}
-                  </span>
-                  <h2>{source.name}</h2>
-                  <p className="career-card-meta">
-                    {[historyNames[source.historyType], formatSourceMonth(source.startMonth),
-                      source.issuedOn && `취득일 ${formatSourceDate(source.issuedOn)}`].filter(Boolean).join(' · ')}
-                  </p>
-                  {source.createdAt && (
-                    <p className="career-card-meta">
-                      등록 <time dateTime={source.createdAt}>{formatSourceCreatedAt(source.createdAt, timeZone)}</time>
-                    </p>
-                  )}
-                  <div className="career-card-actions">
-                    <button type="button" disabled={pending} onClick={() => onEdit(source.sourceId)}>수정</button>
-                    <button className="career-card-delete" type="button" disabled={pending} onClick={() => prepareDelete(source)}>삭제</button>
-                  </div>
-                  <SourceAttachmentsDisclosure sourceId={source.sourceId} />
-                </article>
-              </li>
-            ))}
-          </ul>
-        )}
-        {result?.totalPages > 1 && (
-          <nav aria-label="소스 목록 페이지" className="career-card-actions">
-            <button type="button" disabled={pending || pageNumber === 1}
-              onClick={() => changePage(pageNumber - 1)}>이전</button>
-            <span>{result.pageNumber} / {result.totalPages}</span>
-            <button type="button" disabled={pending || pageNumber === result.totalPages}
-              onClick={() => changePage(pageNumber + 1)}>다음</button>
-          </nav>
-        )}
-      </main>
+          <div className="career-category-panel" id="career-category-panel" inert={!categoriesOpen}>
+            <div className="career-category-panel-content">
+              <div className="career-category-options">
+                {[['', '전체'], ...Object.entries(sourceTypeLabels)].map(([sourceType, label]) => (
+                  <button key={sourceType} type="button" aria-pressed={category === sourceType} disabled={pending}
+                    onClick={() => {
+                      if (category === sourceType) return
+                      changePage(1)
+                      setCategory(sourceType)
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </nav>
+        <main className="career-library-content">
+          <div className="career-library-heading">
+            <h1>자료보관</h1>
+            <button className="career-register-button" type="button" disabled={pending} onClick={onRegister}>
+              소스 등록
+            </button>
+          </div>
+          {confirming && <DeleteConfirmation source={confirming} deleting={deleting}
+            onCancel={() => setConfirming(null)} onDelete={deleteSource} />}
+          {!result && <p role="status">소스를 불러오는 중이에요.</p>}
+          {result?.failed && (
+            <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>목록 다시 불러오기</button>
+          )}
+          {result?.items?.length === 0 && (
+            <div className="career-empty">
+              <h2>{category ? `등록된 ${sourceTypeLabels[category]} 소스가 없어요.` : '등록된 소스가 없어요.'}</h2>
+              {!category && <p>이력, 경험, 자격증을 등록해 커리어 기록을 모아 보세요.</p>}
+            </div>
+          )}
+          {result?.items?.length > 0 && (
+            <ul className="career-card-grid" aria-label="소스 목록">
+              {result.items.map(source => (
+                <li key={source.sourceId}>
+                  <SourceCard source={source} timeZone={timeZone} pending={pending}
+                    onEdit={onEdit} onDelete={prepareDelete} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {result?.totalPages > 1 && (
+            <SourcePagination pageNumber={pageNumber} totalPages={result.totalPages}
+              pending={pending} onChange={changePage} />
+          )}
+        </main>
+      </div>
     </div>
   )
 }

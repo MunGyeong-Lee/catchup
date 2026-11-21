@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './SourceAttachments.css'
 
-export default function SourceAttachments({ sourceId }) {
+export default function SourceAttachments({ sourceId, notify }) {
   const [result, setResult] = useState(null)
   const [retry, setRetry] = useState(0)
   const endpoint = `/api/sources/${sourceId}/attachments`
@@ -15,20 +15,21 @@ export default function SourceAttachments({ sourceId }) {
         if (payload.error !== null || !Array.isArray(payload.response)) throw new Error('Invalid list response')
         return payload.response
       })
-      .then(files => setResult({ files }))
+      .then(files => {
+        if (!controller.signal.aborted) setResult({ files })
+      })
       .catch(() => {
-        if (!controller.signal.aborted) setResult({ failed: true })
+        if (controller.signal.aborted) return
+        setResult({ failed: true })
+        notify('error', '첨부 파일을 불러오지 못했어요.')
       })
     return () => controller.abort()
-  }, [endpoint, retry])
+  }, [endpoint, retry, notify])
 
   if (!result) return <p role="status">첨부 파일을 불러오는 중이에요.</p>
   if (result.failed) {
     return (
-      <div>
-        <p role="alert">첨부 파일을 불러오지 못했어요.</p>
-        <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>다시 시도</button>
-      </div>
+      <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>첨부 파일 다시 불러오기</button>
     )
   }
   if (!result.files.length) return <p>첨부한 파일이 없어요.</p>

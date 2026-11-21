@@ -124,6 +124,12 @@ public class SourceAttachmentIntegrationTest {
         assertEquals("EXPERIENCE", summary.get("sourceType").asText());
         assertEquals("소스 Attachments", summary.path("name").asText());
         assertFalse(summary.has("displayName"));
+        assertTrue(summary.path("hasAttachments").isBoolean());
+        assertTrue(summary.path("hasAttachments").asBoolean());
+        JsonNode summaryWithoutFiles = summaries.valueStream()
+                .filter(source -> otherSourceId.equals(source.path("sourceId").asText())).findFirst().orElseThrow();
+        assertTrue(summaryWithoutFiles.path("hasAttachments").isBoolean());
+        assertFalse(summaryWithoutFiles.path("hasAttachments").asBoolean());
         JsonNode registeredDetails = successBody(send(request(SOURCE_PATH + "/" + sourceId)));
         assertEquals("소스 Attachments", registeredDetails.path("name").asText());
         assertEquals("Attachments", registeredDetails.path("title").asText());
@@ -312,12 +318,14 @@ public class SourceAttachmentIntegrationTest {
         JsonNode schemas = api.path("components").path("schemas");
         JsonNode listSchema = schemas.path("SourceListResponse");
         assertEquals(List.of("#/components/schemas/CertificationListResponse",
-                        "#/components/schemas/ExperienceListResponse", "#/components/schemas/HistoryListResponse"),
+                        "#/components/schemas/ExperienceListResponse", "#/components/schemas/HistoryListResponse",
+                        "#/components/schemas/TextSourceListResponse"),
                 listSchema.path("oneOf").valueStream().map(schema -> schema.path("$ref").asText()).sorted().toList());
-        for (String schemaName : List.of("CertificationListResponse", "ExperienceListResponse", "HistoryListResponse")) {
+        for (String schemaName : List.of("CertificationListResponse", "ExperienceListResponse", "HistoryListResponse", "TextSourceListResponse")) {
             JsonNode properties = schemas.path(schemaName).path("properties");
             assertEquals("string", properties.path("name").path("type").asText());
             assertFalse(properties.has("displayName"));
+            assertEquals("boolean", properties.path("hasAttachments").path("type").asText());
         }
         JsonNode registerSchema = schemas.path("SourceRegisterRequest");
         assertEquals("sourceType", registerSchema.path("discriminator").path("propertyName").asText());
@@ -805,7 +813,7 @@ public class SourceAttachmentIntegrationTest {
         }
     }
 
-    /** 신규 세 유형을 두 요청 형식으로 등록하고 PostgreSQL의 저장값과 첨부 참조를 확인한다. */
+    /** 신규 세 유형을 두 요청 형식으로 등록하고 저장값, 첨부 참조와 목록 응답을 확인한다. */
     @Test
     public void registersNewSourceTypesWithAndWithoutAttachments() throws Exception {
         String name = "신규 등록 검증 " + UUID.randomUUID();
@@ -833,6 +841,17 @@ public class SourceAttachmentIntegrationTest {
                 HttpResponse<byte[]> withAttachment = multipart(SOURCE_PATH, "POST", UUID.randomUUID().toString(),
                         body, PDF);
                 assertStoredRegistration(withAttachment, sourceType, name, expectedDetails, 1);
+            }
+            JsonNode items = successBody(send(request(SOURCE_PATH + "?page_size=100"))).path("items");
+            List<JsonNode> registeredSources = items.valueStream()
+                    .filter(source -> name.equals(source.path("name").asText())).toList();
+            assertEquals(6, registeredSources.size());
+            for (String sourceType : typeList) {
+                List<JsonNode> sourceList = registeredSources.stream()
+                        .filter(source -> sourceType.equals(source.path("sourceType").asText())).toList();
+                assertEquals(2, sourceList.size());
+                assertEquals(List.of(false, true), sourceList.stream()
+                        .map(source -> source.path("hasAttachments").asBoolean()).sorted().toList());
             }
         } finally {
             this.jdbc.update("DELETE FROM upload_attempts WHERE source_id IN (SELECT source_id FROM sources WHERE name = ?)", name);

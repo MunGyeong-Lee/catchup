@@ -28,7 +28,7 @@ public enum SourceType {
             Set.of("jobTitle", "content", "idealCandidateProfile", "jobDescription")),
     /** 문체 설명 또는 예문을 담는 문체 및 어투다. */
     WRITING_STYLE(List.of("content"), Set.of()),
-    /** 참고 자료의 본문을 담는 기타 텍스트다. */
+    /** 참고 자료의 본문을 담는 기타다. */
     OTHER_TEXT(List.of("content"), Set.of());
 
     private final List<String> requiredFields;

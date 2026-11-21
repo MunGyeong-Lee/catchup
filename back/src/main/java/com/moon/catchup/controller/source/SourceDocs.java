@@ -30,7 +30,7 @@ public interface SourceDocs {
      * @return 요청 결과를 담은 공통 응답
      */
     @Operation(summary = "소스 목록 조회",
-            description = "소스 목록의 한 페이지를 조회합니다. 정렬 생략 시 최근 등록 순이며, 등록 시각은 UTC ISO 8601입니다.")
+            description = "이력, 경험, 자격증, 지원회사, 문체 및 어투, 기타 소스 목록의 한 페이지를 조회합니다. 정렬 생략 시 최근 등록 순이며, 등록 시각은 UTC ISO 8601입니다. 항목마다 저장된 첨부파일 유무를 반환합니다.")
     @ApiResponse(responseCode = "200", description = "소스 목록 페이지",
             content = @Content(schema = @Schema(implementation = SourcePageEnvelope.class)))
     @ApiResponse(responseCode = "400", description = "페이지 또는 정렬 매개변수가 유효하지 않음")

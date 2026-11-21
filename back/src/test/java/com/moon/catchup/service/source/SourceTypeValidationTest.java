@@ -18,7 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.context.ApplicationEventPublisher;
 
-/** 지원회사, 문체 및 어투, 기타 텍스트의 상세 입력 검증을 확인한다. */
+/** 지원회사, 문체 및 어투, 기타의 상세 입력 검증을 확인한다. */
 public class SourceTypeValidationTest {
 
     private final SourceServiceImpl sourceService = new SourceServiceImpl(

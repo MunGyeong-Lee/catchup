@@ -16,6 +16,7 @@ import java.util.function.Function;
 
 import com.moon.catchup.domain.source.SourceDateFormat;
 import com.moon.catchup.domain.source.SourceDetailsVo;
+import com.moon.catchup.domain.source.SourceEntity;
 import com.moon.catchup.domain.source.SourceSummaryVo;
 import com.moon.catchup.domain.source.SourceType;
 import com.moon.catchup.domain.source.CareerPeriodVo;
@@ -69,7 +70,7 @@ public class SourceServiceImpl implements SourceService {
      * <p>유형, 공통 이름, 상세 객체, 허용되지 않은 필드, 필드 형식, 필수 값, 유형별 값 규칙의
      * 순서로 확인한다. 형식은 필드 이름 오름차순으로, 필수 값은 {@link SourceType}에 선언된 순서로
      * 검사한다. 문자열의 앞뒤 공백은 제거하고 빈 상세 값은 생략한다.
-     * 지원회사는 회사명, 문체 및 어투와 기타 텍스트는 본문 필드를 필수 문자열로 받는다.
+     * 지원회사는 회사명, 문체 및 어투와 기타는 본문 필드를 필수 문자열로 받는다.
      * 지원회사의 직무, 회사·공고 메모, 인재상, 직무 기술서는 선택 문자열이다.
      * 동일한 규칙을 첨부 포함 여부와 관계없이 적용한다.
      * 첫 실패에서 필드 오류 한 건을 던지므로 요청 객체의 키 순서는 결과에 영향을 주지 않는다.
@@ -208,6 +209,7 @@ public class SourceServiceImpl implements SourceService {
      *
      * <p>JPA의 엔티티 속성 정렬을 사용한다. 요청 순서 뒤에 누락된 등록 시각·식별자 내림차순을
      * 적용한다. 전체 범위를 벗어난 페이지는 요청 정보와 전체 건수를 유지하고 빈 항목을 반환한다.
+     * 현재 페이지의 첨부 유무는 같은 읽기 트랜잭션에서 일괄 조회한다.
      *
      * @param pageNumber 1부터 시작하는 페이지 번호
      * @param pageSize 페이지당 항목 수
@@ -230,7 +232,11 @@ public class SourceServiceImpl implements SourceService {
         if (pageRequest.getOffset() > Integer.MAX_VALUE) {
             return new PageImpl<>(List.of(), pageRequest, this.sourceRepository.count());
         }
-        return this.sourceRepository.findAll(pageRequest).map(SourceSummaryVo::from);
+        Page<SourceEntity> sourcePage = this.sourceRepository.findAll(pageRequest);
+        Set<Long> sourceIdsWithAttachments = sourcePage.isEmpty() ? Set.of()
+                : this.sourceAttachmentRepository.findSourceIdsWithAttachments(
+                        sourcePage.getContent().stream().map(SourceEntity::getId).toList());
+        return sourcePage.map(source -> SourceSummaryVo.from(source, sourceIdsWithAttachments.contains(source.getId())));
     }
 
     /**
@@ -265,7 +271,7 @@ public class SourceServiceImpl implements SourceService {
      *
      * <p>이력은 구분, 활동 기간, 진행 상태 순으로 확인하고 경험은 활동 기간과 관련 링크를
      * 차례로 확인한다. 자격증은 취득일·만료일 및 날짜 순서를 확인한 뒤 검증 링크를 확인한다.
-     * 지원회사, 문체 및 어투, 기타 텍스트에는 {@link #validate}의 공통 입력 검증을 적용한다.
+     * 지원회사, 문체 및 어투, 기타에는 {@link #validate}의 공통 입력 검증을 적용한다.
      *
      * @param sourceType 요청 소스 유형 코드
      * @param details 유형별 상세 입력

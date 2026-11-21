@@ -4,8 +4,9 @@ import { formatSourceCreatedAt, formatSourceDate, formatSourceMonth } from '../s
 
 test('a single UTC instant displays on different dates across time zones', () => {
   const instant = '2026-11-21T16:30:00Z'
-  assert.match(formatSourceCreatedAt(instant, 'Asia/Seoul'), /2026\. 11\. 22\./)
-  assert.match(formatSourceCreatedAt(instant, 'America/Los_Angeles'), /2026\. 11\. 21\./)
+  assert.equal(formatSourceCreatedAt(instant, 'Asia/Seoul'), '2026. 11. 22. 1:30AM')
+  assert.equal(formatSourceCreatedAt(instant, 'America/Los_Angeles'), '2026. 11. 21. 8:30AM')
+  assert.equal(formatSourceCreatedAt('2026-11-20T07:30:00Z', 'Asia/Seoul'), '2026. 11. 20. 4:30PM')
   assert.equal(formatSourceCreatedAt(instant, 'Not/AZone'), formatSourceCreatedAt(instant))
 })
 
