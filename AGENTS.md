@@ -1,0 +1,130 @@
+# Catchup 프로젝트 작업 지침
+
+## 공통
+
+- 함수와 변수는 어떤 대상을 다루고 어떤 동작을 하는지 드러나는 이름을 사용한다.
+
+## 기능 설계와 테스트
+
+1. 기능 계약은 JavaDoc, OpenAPI, 테스트를 기준으로 관리한다. 구현 전에 이 계약과 관련 이슈를 확인하고 변경 범위와 성공·실패 조건을 정한다. 이슈는 범위와 진행 상태를 관리하는 데 사용한다.
+2. 사용자와 함께 정할 핵심 동작은 구현 전에 합의한다.
+3. 기능을 구현하면서 JavaDoc과 OpenAPI를 갱신하고 성공·실패 조건에 맞는 단위 테스트와 통합 테스트를 작성·실행한다.
+4. 테스트 실패 원인을 수정하고, 코드를 정리한 뒤 관련 테스트를 다시 실행한다. 프론트엔드와 백엔드를 연결하는 변경은 실제 요청과 응답을 확인하고, 화면이나 저장 동작이 바뀌면 해당 결과도 확인한다.
+
+## 설계 결정과 Git 이력
+
+- 설계 결정이 포함된 변경은 커밋 제목에 바뀐 내용을 요약하고, 본문에 해결하려는 문제와 해당 설계를 선택한 이유를 적는다. 선택에 영향을 준 제약이나 검토한 대안, 호환성 영향이 있으면 함께 기록한다.
+- 기존 설계를 수정하기 전에 관련 파일의 커밋 본문을 `git log -- <path>`와 `git show <commit>`으로 확인한다. 설계 의도는 이력에서 확인하고 현재 동작은 코드, JavaDoc, OpenAPI, 테스트에서 확인한다.
+
+설계 변경 커밋은 제목과 본문 사이를 한 줄 띄우고 아래 형식으로 작성한다. `배경`과 `결정`은 필수다. `대안`과 `영향`은 결정에 영향을 준 대안이나 호환성·마이그레이션 영향이 있을 때 적는다.
+
+```text
+<변경 내용을 요약한 제목>
+
+배경
+<해결하려는 문제와 고려한 제약>
+
+결정
+<선택한 설계와 그 이유>
+
+대안
+<검토한 다른 방식과 선택하지 않은 이유>
+
+영향
+<API·DB·설정·기존 데이터와 이관에 미치는 영향>
+```
+
+## 프론트엔드
+
+- `front/`의 React 컴포넌트는 JavaScript로 작성하고 `.jsx` 확장자를 사용한다.
+- 컴포넌트 이름은 `ResumeList`처럼 대문자로 시작하고 각 단어의 첫 글자를 대문자로 쓴다.
+- 프론트엔드 코드를 수정한 뒤 `front/`에서 `npm run lint`와 `npm run build`를 실행한다.
+
+## 백엔드
+
+- `back/`의 Spring Boot 코드는 Java 21을 기준으로 작성한다. 백엔드 소스와 테스트의 지역 변수에는 `var` 대신 명시적인 타입을 사용한다.
+- `com.moon.catchup` 하위에서 백엔드 코드는 계층을 먼저 나누고, 각 계층 아래에 기능별 패키지를 둔다. 소스 관리의 컨트롤러와 OpenAPI 문서 인터페이스는 `controller.source`, 요청·응답 DTO는 `controller.source.dto`에 둔다. 서비스는 `service.source`, 저장소는 `repository.source`, 엔티티·값 객체·내부 조회 모델은 `domain.source`, 외부 파일 저장 연동은 `storage.source`에 둔다. 공통 응답과 예외 처리는 `common`에 둔다. 테스트는 대응하는 운영 코드 패키지에 둔다.
+- 계층 간에는 컨트롤러 → 서비스 → 저장소 방향으로 호출한다. 컨트롤러는 요청과 응답을 처리하고, 서비스는 업무 규칙과 트랜잭션 흐름을 담당하며, 저장소는 SQL과 데이터베이스 접근을 담당한다.
+- 요청과 응답은 데이터 전송 객체(예: `SourceRegisterRequest`, `SourceRegisterResponse`)로 표현한다. 데이터 전송 객체는 컨트롤러에 중첩하지 않고 별도 Java 파일에 선언한다. 컨트롤러에서 데이터 전송 객체를 내부 객체로 연결한다. 서비스의 업무 처리는 도메인 객체를 사용한다.
+- 데이터 전송 객체와 도메인 객체는 일반 Java 클래스로 선언하고, 접근자는 Lombok의 `@Getter`로 생성한다. 단순 초기화에는 `@AllArgsConstructor`나 `@RequiredArgsConstructor` 중 클래스의 역할에 맞는 어노테이션을 사용한다. 검증이나 방어적 복사가 필요한 VO에 `@AllArgsConstructor`를 적용할 때는 생성자를 `AccessLevel.PRIVATE`로 제한하고, 정적 팩터리에서 검증과 복사를 마친 뒤 호출한다.
+- 기간처럼 값 자체에 의미와 제약이 있는 개념에는 불변 값 객체를 사용한다. 값 객체는 생성할 때 공통 제약을 검증한다.
+- 컨트롤러가 호출하는 서비스는 인터페이스와 `Impl` 구현체로 분리한다. 첨부 원본 저장처럼 교체 가능한 외부 연동도 인터페이스로 정의한다. 내부 트랜잭션 실행 빈은 별도 구현 계약이 있을 때 인터페이스를 둔다.
+- 영속 모델 클래스명은 `SourceEntity`처럼 `Entity`로 끝낸다. 값 객체와 응답 변환에 사용하는 내부 조회 모델은 각각 `SourceDetailsVo`, `SourceSummaryVo`처럼 `Vo`로 끝낸다. 엔티티와 VO는 `domain` 패키지의 별도 파일에 선언한다.
+- 조회 응답은 내부 VO를 응답 DTO로 변환해 만든다. 조회용 VO에는 응답에 필요한 필드값이나 다른 VO를 담는다. 예를 들어 `StoredAttachmentVo`는 첨부파일 엔티티의 메타데이터 필드와 S3 객체 키를 직접 보관한다.
+- 엔티티 → VO 변환은 대상 VO의 `from(entity, ...)`에 둔다. VO → 엔티티 변환이 실제 등록 또는 조회 흐름에 필요하면 원본 VO에 `convertTo{Entity}()`를 선언하고 해당 흐름에서 호출한다. VO → 응답 DTO 변환은 응답 DTO의 `from(vo)`를 사용할 수 있다.
+- 저장소는 Spring Data JPA를 사용한다. 고정된 사용자 정의 쿼리는 저장소 인터페이스에 `@Query`로 선언하고, DB 전용 SQL에는 `@NativeQuery` 또는 `@Query(nativeQuery = true)`를 사용한다. 여러 조회 컬럼은 프로젝션 또는 조회용 VO로 매핑한다. 업무 규칙의 검증은 서비스와 값 객체가 맡는다.
+- 클래스 JavaDoc의 첫 문장은 담당 역할을 설명한다. 공통 업무 규칙이나 설계 이유는 `<p>` 문단에 기록한다. 메서드와 생성자 JavaDoc의 첫 문장은 동작을 설명하고, 호출자가 알아야 하는 입력 조건·검증 순서·정렬·트랜잭션·실패 동작을 본문에 기록한다. 중복되는 계약은 `{@link ...}`로 연결하고 여러 객체에 걸친 흐름은 필요한 경우 `package-info.java`에 기록한다.
+- 백엔드 코드를 수정한 뒤 `back/`에서 `./gradlew test`를 실행한다. 데이터베이스 연동 테스트는 `localhost:5432/catchup`에 연결하고, 기존 `public` 데이터에 영향을 주지 않도록 별도의 검증용 스키마를 사용한다.
+
+### 컨트롤러와 문서
+
+- 컨트롤러는 기능의 `{Domain}Docs` 인터페이스를 구현한다. 컨트롤러에는 Spring의 요청 매핑과 바인딩을 두고, OpenAPI 작업과 응답 설명은 문서 인터페이스에 둔다. 데이터 전송 객체의 필드 스키마는 데이터 전송 객체에 선언한다. 서비스와 도메인 JavaDoc은 업무 규칙을, 저장소 JavaDoc은 정렬·잠금·네이티브 SQL의 이유를 설명한다.
+- 컨트롤러 메서드 주석에는 `소스 목록 조회`, `첨부파일 미리보기`처럼 API의 사용자 기준 역할을 적는다. HTTP 메서드와 경로가 같고 요청 형식만 다르면 `소스 수정 (JSON 요청)`, `소스 수정 (새 첨부파일 포함)`처럼 API 이름을 통일한다.
+- 파일 업로드는 `multipart/form-data`를 사용한다. 브라우저에서 `FormData`를 보낼 때는 브라우저가 경계값을 포함한 `Content-Type`을 설정하도록 한다. 별도 요구사항이 있는 커스텀 헤더는 도입 목적을 API 계약에 기록한다.
+- 기능 전용 파일 응답 조립 클래스는 컨트롤러 패키지에 둔다.
+- 오류 코드는 `ErrorCode`, 업무 오류는 `ApiException`을 사용한다. `ApiExceptionHandler`가 공통 오류 응답을 만든다.
+
+소스 관리의 이름은 Java와 JavaScript에서 `Source` 또는 `source`, 요청 경로에서 `sources`, 데이터베이스 테이블에서 `sources`를 사용한다. 요청과 응답의 소스 식별자는 `sourceId`, 소스 유형은 `sourceType`, 첨부 등록 요청의 소스 입력 부분은 `source`로 표기한다.
+
+### 핵심 구현 패턴
+
+#### 계층별 표준 애너테이션
+
+| 계층 | 표준 애너테이션 | 적용 방식 |
+| --- | --- | --- |
+| 영속 객체(Entity) | `@Entity`, `@Table`, `@Getter`, `@SuperBuilder`, `@NoArgsConstructor` | JPA 모델에는 테이블 이름을 명시하고 보호된 기본 생성자를 둔다. 공통 영속 필드는 `BaseEntity`로 관리하며, 상속 계층에서 빌더를 만들 때 `@SuperBuilder`를 사용한다. |
+| 값 객체(VO) | `@Getter`, `@AllArgsConstructor` | 필드를 불변으로 유지한다. 검증이 필요한 경우 private 생성자와 검증 팩터리를 사용한다. |
+| 요청 데이터 전송 객체(Request DTO) | `@Getter`, `@Schema` | 클래스와 필드의 의미를 문서화하고, 필수 여부와 범위 등 요청 형식에 해당하는 검증 애너테이션을 사용한다. |
+| 응답 데이터 전송 객체(Response DTO) | `@Getter`, `@Schema` | 클래스와 응답 필드의 의미를 문서화한다. |
+| 열거형(Enum) | `@Getter`, `@RequiredArgsConstructor` | 필드가 있는 열거형의 기본 패턴이며, 상수는 `UPPER_SNAKE_CASE`로 작성한다. |
+| 서비스(Service) | `@Service`, `@Transactional` | 컨트롤러가 사용하는 공개 서비스는 인터페이스와 구현체로 분리한다. 구현체의 쓰기 작업에 트랜잭션 경계를 선언하고, 조회 트랜잭션은 `readOnly = true`로 표시한다. |
+
+#### ResponseVo 사용
+
+정상 JSON 응답은 제네릭을 사용하지 않는 `ResponseVo`로 만든다. 데이터가 있으면 `buildResponse(data)`를 호출한다. 데이터가 없으면 `buildResponse()`를 호출한다. 컨트롤러는 정상 JSON 응답의 `ResponseVo`를 직접 반환한다. 생성 시 `201 Created`처럼 지정할 상태는 `@ResponseStatus`로 선언하고, 필요한 헤더는 서블릿 응답에 설정한다. 응답 필드와 오류는 `ResponseVo`, `ErrorCode`, 각 OpenAPI 응답 및 테스트의 계약을 따른다. 첨부 파일을 열거나 내려받는 성공 응답은 `AttachmentFileResponse.buildResponse(...)`에서 헤더와 원본 스트림을 조립한다.
+
+```java
+@GetMapping
+public ResponseVo getList() {
+    List<DomainVo> domainList = this.domainService.getList();
+    return ResponseVo.buildResponse(new DomainListResponse(domainList));
+}
+
+@DeleteMapping("/{id}")
+public ResponseVo delete(@PathVariable Long id) {
+    this.domainService.delete(id);
+    return ResponseVo.buildResponse();
+}
+```
+
+### 트랜잭션과 데이터베이스
+
+- 쓰기 작업의 트랜잭션 범위를 서비스에서 명시하고, 독립 조회에 트랜잭션이 필요하면 `@Transactional(readOnly = true)`를 사용한다.
+- 독립적인 부가 처리는 주 작업의 성공을 막지 않도록 이벤트를 발행하고 이벤트 라우터의 `ExecutorService`에서 처리한다. 소스와 첨부 메타데이터처럼 함께 확정해야 하는 변경에는 같은 트랜잭션을 적용한다.
+- 조건에 따라 쿼리 구조가 바뀌는 복잡한 조회는 JPA Criteria API나 Querydsl을 사용한다. 선언형 쿼리로 결과 반환이나 트랜잭션 의미를 유지하기 어려운 경우 JPA 커스텀 저장소로 처리하고 이유를 저장소 JavaDoc에 기록한다. 기존 PostgreSQL 전용 저장 구조와 잠금은 기능 계약의 일부이므로 다른 데이터베이스로 옮길 때 마이그레이션과 검증 계획을 작성한다. 벤더에 종속된 쿼리를 쓰면 이유를 공유한다.
+
+### 페이지네이션
+
+- 페이지네이션을 제공하는 요청은 `page_number`와 `page_size`를 받는다. 페이지 번호는 1부터 시작하고 페이지 크기에는 상한을 둔다.
+- 선택 정렬 필드 `order_by`는 `{property}:{ASC|DESC}` 목록으로 받고 허용된 속성만 사용한다. 정렬을 생략하면 안정적인 기본 순서를 적용한다.
+- 페이지 응답에는 `items`, `pageNumber`, `pageSize`, `totalPages`, `totalElements`를 담는다. 마지막 페이지 다음을 요청하면 빈 목록을 반환한다.
+
+### Java 코드 스타일
+
+- 현재 기능에 필요한 만큼만 작성하고, 다른 개발자가 바로 읽을 수 있는 이름과 단순한 호출 흐름을 사용한다.
+- 클래스는 UpperCamelCase, 메서드·변수는 lowerCamelCase, 상수는 UPPER_SNAKE_CASE로 작성한다. 생성·조회·수정·삭제 메서드에는 가능한 한 `create`, `get`, `update`, `delete`를 사용한다. 새 목록 변수의 이름에는 `List`를 붙이고 컨트롤러 요청·응답 객체를 `req`와 `res`로 이름 지을 수 있다.
+- 운영 코드와 테스트의 클래스, 필드, 생성자, 메서드에는 Java 문법이 허용하는 범위에서 `public`, `protected`, `private` 중 접근 제어자를 명시한다. 클래스 내부에서만 사용하는 메서드는 `private`으로 둔다.
+- DI 필드명에는 주입 대상의 역할을 표시한다. 예를 들어 서비스는 `sourceService`, 저장소는 `sourceAttachmentRepository`, 이벤트 발행기는 `applicationEventPublisher`로 쓴다. 필드명을 바꾸면 모든 호출부를 함께 확인한다.
+- 주석에는 `DB`, `S3`, `첨부파일`처럼 실제 대상이 드러나는 용어를 쓴다. 스케줄러 주석에는 기본 실행 시각과 시간대 또는 반복 간격, 관련 설정 키, 조회 및 삭제 기준, 실패 시 처리를 적는다. 실행기 설정의 주석에는 실행할 작업, 제출 시점, 동시 실행 수, 대기 한도와 거절 시 동작을 적는다.
+- 와일드카드 가져오기, `var`, `@Async`, 코드 주석의 이모지를 사용하지 않는다. 클래스 이름 충돌을 해결할 때만 코드에서 전체 패키지 이름을 사용한다.
+- 수정 가능한 리스트가 필요한 기존 코드에서 `Collectors.toList()`를 `Stream.toList()`로 바꾸지 않는다. 인스턴스 필드는 `this`로 접근한다.
+- JavaDoc에 메서드의 의도와 해당되는 `@param`, `@return`, `@throws`를 적는다. 도입 버전이 확인된 공개 메서드는 `@since`를 적고 이후 버전의 동작 변경은 버전과 내용을 기록한다.
+- 작업 후 사용하지 않는 가져오기와 어노테이션을 제거한다. 호출이 사라진 기존 메서드는 보고하고, 의존성·외부 설정·응답 계약 변경은 사용자에게 알린다. JavaDoc, OpenAPI, 테스트 및 저장소에 있는 요청 검증 컬렉션의 계약도 갱신한다.
+
+### 로깅
+
+- SLF4J 로거는 Lombok의 `@Slf4j`로 선언한다.
+
+- 로그 메시지는 영어로 쓰고 `sourceId={}`처럼 의미 있는 구조화된 필드를 사용한다.
+- 즉시 조치가 필요한 장애는 `error`, 재시도나 잠재 문제는 `warn`, 주요 업무 이벤트는 `info`, 상세 진단은 `debug`를 사용한다.
+- 비밀번호, 토큰, 비밀 키와 개인정보를 로그에 넣지 않는다. 예외를 기록할 때는 예외 객체를 마지막 인자로 넣는다.

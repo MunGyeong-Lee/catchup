@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: catchup
+  datasource:
+    url: 'jdbc:postgresql://localhost:5432/catchup'
+    username: '${CATCHUP_DB_USER}'
+    password: '${CATCHUP_DB_PASSWORD:}'
+  sql:
+    init:
+      mode: always
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      # 소스 상세 조회의 REPEATABLE_READ를 설정하는 JDBC 연결을 JPA 세션 종료까지 유지한다.
+      hibernate.connection.handling_mode: DELAYED_ACQUISITION_AND_HOLD
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 104MB
+
+server:
+  address: '127.0.0.1'
+  tomcat:
+    max-part-count: -1
+
+catchup:
+  attachments:
+    bucket: '${CATCHUP_S3_BUCKET:}'
+    region: '${CATCHUP_S3_REGION:ap-southeast-2}'
+    prefix: '${CATCHUP_S3_PREFIX:attachments/}'

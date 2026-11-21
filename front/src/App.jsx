@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import CareerItemAttachments from './CareerItemAttachments.jsx'
-import CareerItemList from './CareerItemList.jsx'
+import SourceAttachments from './SourceAttachments.jsx'
+import SourceList from './SourceList.jsx'
 import CareerLibraryHeader from './CareerLibraryHeader.jsx'
 
-const careerItemTypes = {
+const sourceTypes = {
   CAREER_HISTORY: {
     label: '이력',
     fields: [
@@ -44,7 +44,7 @@ const careerItemTypes = {
   },
 }
 
-function CareerItemField({ field, value, error, onChange, disabled, prefix }) {
+function SourceField({ field, value, error, onChange, disabled, prefix }) {
   const { name, label, required, options, type = 'text' } = field
   const fieldProps = {
     id: `${prefix}${name}`,
@@ -84,38 +84,50 @@ function CareerItemField({ field, value, error, onChange, disabled, prefix }) {
   )
 }
 
-function CareerItemForm({ edit, onList, onSaved }) {
-  const [careerItemType, setCareerItemType] = useState(edit?.careerItemType ?? 'CAREER_HISTORY')
-  const [drafts, setDrafts] = useState(() => edit ? { [edit.careerItemType]: edit.details } : {})
+function SourceForm({ edit, onList, onSaved }) {
+  const [sourceType, setSourceType] = useState(edit?.sourceType ?? 'CAREER_HISTORY')
+  const [sourceName, setSourceName] = useState(edit?.name ?? '')
+  const [drafts, setDrafts] = useState(() => {
+    if (!edit) return {}
+    const storedFields = sourceTypes[edit.sourceType].fields.flatMap(({ name }) => {
+        const value = edit[name === 'name' ? 'certificateName' : name]
+      return value == null ? [] : [[name, value]]
+    })
+    return { [edit.sourceType]: Object.fromEntries(storedFields) }
+  })
   const [fieldErrors, setFieldErrors] = useState({})
   const [notice, setNotice] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [files, setFiles] = useState([])
   const [requestId, setRequestId] = useState(null)
-  const [savedCareerItem, setSavedCareerItem] = useState(null)
+  const [savedSource, setSavedSource] = useState(null)
   const [removedIds, setRemovedIds] = useState([])
-  const details = drafts[careerItemType] ?? {}
+  const details = drafts[sourceType] ?? {}
   const prefix = edit ? 'edit-' : ''
 
-  function changeCareerItemType(event) {
-    setCareerItemType(event.target.value)
+  function changeSourceType(event) {
+    setSourceType(event.target.value)
     setRequestId(null)
     setFieldErrors({})
     setNotice(null)
   }
 
+  function validationFieldName(name) {
+    return name === 'name' ? (edit ? 'details.name' : 'certificateName') : name
+  }
+
   function changeField(name, value) {
     setRequestId(null)
     setDrafts(previous => {
-      const updatedDetails = { ...previous[careerItemType], [name]: value }
+      const updatedDetails = { ...previous[sourceType], [name]: value }
       if (name === 'ongoing' && value) delete updatedDetails.endMonth
-      return { ...previous, [careerItemType]: updatedDetails }
+      return { ...previous, [sourceType]: updatedDetails }
     })
-    setFieldErrors(previous => ({ ...previous, [name]: undefined }))
+    setFieldErrors(previous => ({ ...previous, [validationFieldName(name)]: undefined }))
     setNotice(null)
   }
 
-  async function submitCareerItem(event) {
+  async function submitSource(event) {
     event.preventDefault()
     if (submitting) return
 
@@ -127,13 +139,19 @@ function CareerItemForm({ edit, onList, onSaved }) {
       setFieldErrors({ attachments: message })
       return
     }
-    const json = JSON.stringify(edit ? { careerItemType, details, removeAttachmentIds: removedIds } : { careerItemType, details })
+    const source = { sourceType, name: sourceName }
+    const registrationFields = Object.fromEntries(Object.entries(details).map(([name, value]) => [
+      name === 'name' ? 'certificateName' : name, value,
+    ]))
+    const json = JSON.stringify(edit
+      ? { ...source, details, removeAttachmentIds: removedIds }
+      : { ...source, ...registrationFields })
     let body = json
     if (files.length) {
       const uploadId = requestId ?? crypto.randomUUID()
       setRequestId(uploadId)
       body = new FormData()
-      body.append('careerItem', new Blob([json], { type: 'application/json' }))
+      body.append('source', new Blob([json], { type: 'application/json' }))
       body.append('requestId', uploadId)
       for (const file of files) body.append('files', file)
     }
@@ -142,7 +160,7 @@ function CareerItemForm({ edit, onList, onSaved }) {
     setFieldErrors({})
     setNotice(null)
     try {
-      const response = await fetch(edit ? `/api/career-items/${edit.careerItemId}` : '/api/career-items', {
+      const response = await fetch(edit ? `/api/sources/${edit.sourceId}` : '/api/sources', {
         method: edit ? 'PUT' : 'POST',
         headers: files.length ? undefined : { 'Content-Type': 'application/json' },
         body,
@@ -152,24 +170,25 @@ function CareerItemForm({ edit, onList, onSaved }) {
         const fields = payload?.field_errors ?? (response.status === 413
           ? { attachments: payload?.error_message ?? '첨부 파일 크기 제한을 초과했어요.' } : {})
         setFieldErrors(fields)
-        setNotice({ kind: 'error', text: payload?.error_message ?? '자료를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' })
+        setNotice({ kind: 'error', text: payload?.error_message ?? '소스를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' })
         return
       }
       const registered = payload?.response
-      if (response.status !== (edit ? 200 : 201) || payload?.error !== null || !registered?.careerItemId) {
+      if (response.status !== (edit ? 200 : 201) || payload?.error !== null || !registered?.sourceId) {
         throw new Error('Invalid registration response')
       }
       if (edit) {
         onSaved()
         return
       }
-      setSavedCareerItem(files.length ? registered.careerItemId : null)
+      setSavedSource(files.length ? registered.sourceId : null)
       setFiles([])
       setRequestId(null)
-      setDrafts(previous => ({ ...previous, [careerItemType]: {} }))
-      setNotice({ kind: 'success', text: `${careerItemTypes[careerItemType].label} 등록을 완료했어요.` })
+      setSourceName('')
+      setDrafts(previous => ({ ...previous, [sourceType]: {} }))
+      setNotice({ kind: 'success', text: `${sourceTypes[sourceType].label} 등록을 완료했어요.` })
     } catch {
-      setNotice({ kind: 'error', text: '자료를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' })
+      setNotice({ kind: 'error', text: '소스를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.' })
     } finally {
       setSubmitting(false)
     }
@@ -178,18 +197,18 @@ function CareerItemForm({ edit, onList, onSaved }) {
   return (
     <main className="registration">
       <header>
-        <button type="button" className="career-editor-back" disabled={submitting} onClick={onList}>← 자료 목록</button>
-        <h1>{edit ? '취업 서류 자료 수정' : '취업 서류 자료 등록'}</h1>
+        <button type="button" className="career-editor-back" disabled={submitting} onClick={onList}>← 소스 목록</button>
+        <h1>{edit ? '취업 서류 소스 수정' : '취업 서류 소스 등록'}</h1>
       </header>
-      <form onSubmit={submitCareerItem}>
+      <form onSubmit={submitSource}>
         <fieldset disabled={submitting}>
           <fieldset className="career-editor-type">
-            <legend>자료 유형</legend>
+            <legend>소스 유형</legend>
             <div className="career-editor-options">
-              {Object.entries(careerItemTypes).map(([value, type]) => (
+              {Object.entries(sourceTypes).map(([value, type]) => (
                 <label key={value}>
-                  <input type="radio" name="careerItemType" value={value}
-                    checked={careerItemType === value} onChange={changeCareerItemType} />
+                  <input type="radio" name="sourceType" value={value}
+                    checked={sourceType === value} onChange={changeSourceType} />
                   {type.label}
                 </label>
               ))}
@@ -197,10 +216,20 @@ function CareerItemForm({ edit, onList, onSaved }) {
           </fieldset>
           <div className="career-editor-fields">
             <h2 className="career-editor-wide">기본 정보</h2>
-            {careerItemTypes[careerItemType].fields.map(field => (
+            <div className="career-editor-wide">
+              <SourceField field={{ name: 'name', label: '소스 이름', required: true }} prefix={prefix}
+                value={sourceName} error={fieldErrors.name} onChange={(_, value) => {
+                  setSourceName(value)
+                  setRequestId(null)
+                  setFieldErrors(previous => ({ ...previous, name: undefined }))
+                  setNotice(null)
+                }} />
+            </div>
+            {sourceTypes[sourceType].fields.map(field => (
               <div key={field.name} className={field.type === 'textarea' ? 'career-editor-wide' : undefined}>
-                  <CareerItemField field={field} prefix={prefix} value={details[field.name]}
-                error={fieldErrors[field.name]} onChange={changeField}
+                  <SourceField field={field} prefix={field.name === 'name' ? `${prefix}details-` : prefix}
+                value={details[field.name]}
+                error={fieldErrors[validationFieldName(field.name)]} onChange={changeField}
                 disabled={field.name === 'endMonth' && Boolean(details.ongoing)} />
                 </div>
             ))}
@@ -266,16 +295,16 @@ function CareerItemForm({ edit, onList, onSaved }) {
         </fieldset>
         <div className="career-editor-actions">
           <button className="career-editor-cancel" type="button" disabled={submitting} onClick={onList}>{edit ? '수정 취소' : '등록 취소'}</button>
-          <button type="submit" disabled={submitting}>{submitting ? '저장 중…' : edit ? '수정 저장' : '자료 등록'}</button>
+          <button type="submit" disabled={submitting}>{submitting ? '저장 중…' : edit ? '수정 저장' : '소스 등록'}</button>
         </div>
         {notice && (
           <p className={notice.kind} role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.text}</p>
         )}
       </form>
-      {savedCareerItem && (
+      {savedSource && (
         <section>
           <h2>등록한 첨부 파일</h2>
-          <CareerItemAttachments key={savedCareerItem} careerItemId={savedCareerItem} />
+          <SourceAttachments key={savedSource} sourceId={savedSource} />
         </section>
       )}
     </main>
@@ -283,19 +312,19 @@ function CareerItemForm({ edit, onList, onSaved }) {
 }
 
 
-function CareerItemEditor({ careerItemId, onList, onSaved }) {
+function SourceEditor({ sourceId, onList, onSaved }) {
   const [result, setResult] = useState(null)
   const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(`/api/career-items/${careerItemId}`, { signal: controller.signal, cache: 'no-store' })
+    fetch(`/api/sources/${sourceId}`, { signal: controller.signal, cache: 'no-store' })
       .then(async response => {
         if (response.status === 404) {
           setResult({ missing: true })
           return
         }
-        if (!response.ok) throw new Error('Career item edit load failed')
+        if (!response.ok) throw new Error('Source edit load failed')
         const payload = await response.json()
         if (!payload.response || payload.error !== null) throw new Error('Invalid edit response')
         setResult({ edit: payload.response })
@@ -304,20 +333,20 @@ function CareerItemEditor({ careerItemId, onList, onSaved }) {
         if (!controller.signal.aborted) setResult({ failed: true })
       })
     return () => controller.abort()
-  }, [careerItemId, retry])
+  }, [sourceId, retry])
 
-  if (result?.edit) return <CareerItemForm edit={result.edit} onList={onList} onSaved={onSaved} />
+  if (result?.edit) return <SourceForm edit={result.edit} onList={onList} onSaved={onSaved} />
 
   return (
     <main className="registration">
-      <h1>취업 서류 자료 수정</h1>
-      {result?.missing ? <p role="alert">자료를 찾을 수 없어요.</p> : result?.failed ? (
+      <h1>취업 서류 소스 수정</h1>
+      {result?.missing ? <p role="alert">소스를 찾을 수 없어요.</p> : result?.failed ? (
         <>
-          <p role="alert">수정할 자료를 불러오지 못했어요.</p>
+          <p role="alert">수정할 소스를 불러오지 못했어요.</p>
           <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>다시 시도</button>
         </>
-      ) : <p role="status">자료를 불러오는 중이에요.</p>}
-      <button type="button" onClick={onList}>자료 목록</button>
+      ) : <p role="status">소스를 불러오는 중이에요.</p>}
+      <button type="button" onClick={onList}>소스 목록</button>
     </main>
   )
 }
@@ -331,17 +360,17 @@ export default function App() {
     <>
       <div className="career-library career-editor" hidden={showList || Boolean(editingId)}>
         <CareerLibraryHeader />
-        <CareerItemForm onList={() => { setListNotice(null); setShowList(true) }} />
+        <SourceForm onList={() => { setListNotice(null); setShowList(true) }} />
       </div>
       {editingId ? (
         <div className="career-library career-editor">
           <CareerLibraryHeader />
-          <CareerItemEditor key={editingId} careerItemId={editingId}
+          <SourceEditor key={editingId} sourceId={editingId}
             onList={() => setEditingId(null)}
-            onSaved={() => { setListNotice('자료를 수정했어요.'); setEditingId(null) }} />
+            onSaved={() => { setListNotice('소스를 수정했어요.'); setEditingId(null) }} />
         </div>
       ) : showList && (
-        <CareerItemList notice={listNotice} onEdit={id => { setListNotice(null); setEditingId(id) }}
+        <SourceList notice={listNotice} onEdit={id => { setListNotice(null); setEditingId(id) }}
           onRegister={() => { setListNotice(null); setShowList(false) }} />
       )}
     </>
