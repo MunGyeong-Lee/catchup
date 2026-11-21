@@ -24,6 +24,7 @@ import com.moon.catchup.repository.source.SourceAttachmentRepository;
 import com.moon.catchup.common.http.ErrorCode;
 import com.moon.catchup.common.http.ApiException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -82,20 +83,25 @@ public class SourceServiceImpl implements SourceService {
     public SourceDetailsVo validate(String sourceType, Object name, Map<String, Object> details) {
         SourceType type = SourceType.fromRequest(sourceType);
         if (type == null) {
-            throw ApiException.validation(Map.of("sourceType", "소스 유형을 선택해 주세요."));
+            Map<String, String> fieldErrors = Map.of("sourceType", "소스 유형을 선택해 주세요.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
         if (name == null || name instanceof String text && text.isBlank()) {
-            throw ApiException.validation(Map.of("name", "필수 입력 항목입니다."));
+            Map<String, String> fieldErrors = Map.of("name", "필수 입력 항목입니다.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
         if (!(name instanceof String sourceName)) {
-            throw ApiException.validation(Map.of("name", "입력 형식을 확인해 주세요."));
+            Map<String, String> fieldErrors = Map.of("name", "입력 형식을 확인해 주세요.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
         if (details == null) {
-            throw ApiException.validation(Map.of("details", "소스 내용을 입력해 주세요."));
+            Map<String, String> fieldErrors = Map.of("details", "소스 내용을 입력해 주세요.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
 
         if (details.keySet().stream().anyMatch(field -> field == null || !type.acceptsField(field))) {
-            throw ApiException.validation(Map.of("details", "선택한 소스 유형에 해당하는 항목만 입력해 주세요."));
+            Map<String, String> fieldErrors = Map.of("details", "선택한 소스 유형에 해당하는 항목만 입력해 주세요.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
 
         Map<String, Object> normalizedDetails = new HashMap<>();
@@ -111,12 +117,14 @@ public class SourceServiceImpl implements SourceService {
                     && (value instanceof YearMonth || value instanceof LocalDate || value == SourceDateFormat.Invalid.VALUE)) {
                 normalizedDetails.put(field, value);
             } else if (value != null) {
-                throw ApiException.validation(Map.of(detailErrorField(field), "입력 형식을 확인해 주세요."));
+                Map<String, String> fieldErrors = Map.of(detailErrorField(field), "입력 형식을 확인해 주세요.");
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
             }
         }
         for (String field : type.getRequiredFields()) {
             if (!normalizedDetails.containsKey(field)) {
-                throw ApiException.validation(Map.of(detailErrorField(field), "필수 입력 항목입니다."));
+                Map<String, String> fieldErrors = Map.of(detailErrorField(field), "필수 입력 항목입니다.");
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
             }
         }
 
@@ -182,8 +190,10 @@ public class SourceServiceImpl implements SourceService {
     public void modify(long id, SourceDetailsVo details, List<UUID> removedIds, boolean addingAttachments) {
         List<String> removedKeys = new ArrayList<>();
         for (UUID attachmentId : new LinkedHashSet<>(removedIds)) {
-            String key = this.sourceAttachmentRepository.remove(id, attachmentId).orElseThrow(() ->
-                    ApiException.validation(Map.of("removeAttachmentIds", "이 소스의 첨부 파일만 삭제할 수 있어요.")));
+            String key = this.sourceAttachmentRepository.remove(id, attachmentId).orElseThrow(() -> {
+                Map<String, String> fieldErrors = Map.of("removeAttachmentIds", "이 소스의 첨부 파일만 삭제할 수 있어요.");
+                return new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
+            });
             removedKeys.add(key);
         }
         boolean sourceChanged = this.sourceRepository.update(id, details);
@@ -209,10 +219,12 @@ public class SourceServiceImpl implements SourceService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Page<SourceSummaryVo> list(int pageNumber, int pageSize, String orderBy) {
         if (pageNumber < 1) {
-            throw ApiException.validation(Map.of("page_number", "페이지 번호는 1 이상이어야 합니다."));
+            Map<String, String> fieldErrors = Map.of("page_number", "페이지 번호는 1 이상이어야 합니다.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
         if (pageSize < 1 || pageSize > 100) {
-            throw ApiException.validation(Map.of("page_size", "페이지 크기는 1~100이어야 합니다."));
+            Map<String, String> fieldErrors = Map.of("page_size", "페이지 크기는 1~100이어야 합니다.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
         PageRequest pageRequest = PageRequest.of(pageNumber - 1, pageSize, parseSort(orderBy));
         if (pageRequest.getOffset() > Integer.MAX_VALUE) {
@@ -236,7 +248,8 @@ public class SourceServiceImpl implements SourceService {
                 String property = parts.length == 2 ? ORDER_PROPERTIES.get(parts[0]) : null;
                 if (property == null || !Set.of("ASC", "DESC").contains(parts[1])
                         || directions.putIfAbsent(property, Sort.Direction.valueOf(parts[1])) != null) {
-                    throw ApiException.validation(Map.of("order_by", "정렬 속성과 방향을 확인해 주세요."));
+                    Map<String, String> fieldErrors = Map.of("order_by", "정렬 속성과 방향을 확인해 주세요.");
+                    throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
                 }
             }
         }
@@ -264,11 +277,12 @@ public class SourceServiceImpl implements SourceService {
                 String historyType = (String) details.get("historyType");
                 if (historyType != null && !Set.of("WORK", "STUDY", "TRAINING", "OTHER").contains(historyType)) {
                     Map<String, String> fieldErrors = Map.of("historyType", "이력 구분을 확인해 주세요.");
-                    throw ApiException.validation(fieldErrors);
+                    throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
                 }
                 validateActivityPeriod(details);
                 if (Boolean.TRUE.equals(details.get("ongoing")) && details.containsKey("endMonth")) {
-                    throw ApiException.validation(Map.of("endMonth", "진행 중인 이력에는 종료 연월을 입력할 수 없습니다."));
+                    Map<String, String> fieldErrors = Map.of("endMonth", "진행 중인 이력에는 종료 연월을 입력할 수 없습니다.");
+                    throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
                 }
             }
             case EXPERIENCE -> {
@@ -315,7 +329,8 @@ public class SourceServiceImpl implements SourceService {
         try {
             CareerPeriodVo.of(start, end);
         } catch (IllegalArgumentException exception) {
-            throw ApiException.validation(Map.of(endField, "시작 연월 또는 취득일과 같거나 이후여야 합니다."));
+            Map<String, String> fieldErrors = Map.of(endField, "시작 연월 또는 취득일과 같거나 이후여야 합니다.");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         }
         if (start != null) {
             details.put(startField, start);
@@ -345,10 +360,12 @@ public class SourceServiceImpl implements SourceService {
             try {
                 return parse.apply(text);
             } catch (DateTimeParseException exception) {
-                throw ApiException.validation(Map.of(field, "날짜 형식을 확인해 주세요."));
+                Map<String, String> fieldErrors = Map.of(field, "날짜 형식을 확인해 주세요.");
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
             }
         }
-        throw ApiException.validation(Map.of(field, "날짜 형식을 확인해 주세요."));
+        Map<String, String> fieldErrors = Map.of(field, "날짜 형식을 확인해 주세요.");
+        throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
     }
 
     /**
@@ -372,6 +389,7 @@ public class SourceServiceImpl implements SourceService {
         } catch (IllegalArgumentException exception) {
             // Report malformed links as field errors.
         }
-        throw ApiException.validation(Map.of(field, "http 또는 https 웹 주소를 입력해 주세요."));
+        Map<String, String> fieldErrors = Map.of(field, "http 또는 https 웹 주소를 입력해 주세요.");
+        throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
     }
 }

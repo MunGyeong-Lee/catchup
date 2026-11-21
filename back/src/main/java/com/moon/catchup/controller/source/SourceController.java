@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.function.LongSupplier;
 
 import com.moon.catchup.common.http.ApiException;
+import com.moon.catchup.common.http.ErrorCode;
 import com.moon.catchup.controller.source.dto.SourceResponse;
 import com.moon.catchup.controller.source.dto.SourceUpdateRequest;
 import com.moon.catchup.controller.source.dto.SourceListResponse;
@@ -17,6 +18,7 @@ import com.moon.catchup.service.source.SourceManagementService;
 import com.moon.catchup.common.http.PageResponse;
 import com.moon.catchup.common.http.ResponseVo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -104,7 +106,8 @@ public class SourceController implements SourceDocs {
         } catch (ApiException exception) {
             String certificateError = exception.getFieldErrors().get("details.name");
             if (certificateError != null) {
-                throw ApiException.validation(Map.of("certificateName", certificateError));
+                Map<String, String> fieldErrors = Map.of("certificateName", certificateError);
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
             }
             throw exception;
         }
