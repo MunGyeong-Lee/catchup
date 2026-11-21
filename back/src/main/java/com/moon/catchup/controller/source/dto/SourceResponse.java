@@ -5,14 +5,26 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.moon.catchup.domain.source.SourceEditVo;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 /** 소스 상세 조회의 공통 필드와 첨부 정보를 전달한다. */
 @Getter
-@Schema(description = "소스 상세 조회 응답")
+@Schema(description = "소스 상세 조회 응답", discriminatorProperty = "sourceType",
+        oneOf = {CareerHistoryResponse.class, ExperienceResponse.class, CertificationResponse.class,
+                TargetCompanyResponse.class, WritingStyleResponse.class, OtherTextResponse.class},
+        discriminatorMapping = {
+                @DiscriminatorMapping(value = "CAREER_HISTORY", schema = CareerHistoryResponse.class),
+                @DiscriminatorMapping(value = "EXPERIENCE", schema = ExperienceResponse.class),
+                @DiscriminatorMapping(value = "CERTIFICATION", schema = CertificationResponse.class),
+                @DiscriminatorMapping(value = "TARGET_COMPANY", schema = TargetCompanyResponse.class),
+                @DiscriminatorMapping(value = "WRITING_STYLE", schema = WritingStyleResponse.class),
+                @DiscriminatorMapping(value = "OTHER_TEXT", schema = OtherTextResponse.class)
+        })
 public abstract sealed class SourceResponse
-        permits CareerHistoryResponse, ExperienceResponse, CertificationResponse {
+        permits CareerHistoryResponse, ExperienceResponse, CertificationResponse,
+                TargetCompanyResponse, WritingStyleResponse, OtherTextResponse {
     @Schema(description = "소스 식별자")
     private final long sourceId;
     @Schema(description = "현재 소스 유형")
@@ -48,15 +60,15 @@ public abstract sealed class SourceResponse
      *
      * @param edit 저장된 소스 상세와 첨부 요약
      * @return 해당 유형의 소스 상세 응답
-     * @throws IllegalStateException 소스 유형의 전용 상세 응답이 아직 정의되지 않은 경우
      */
     public static SourceResponse from(SourceEditVo edit) {
         return switch (edit.getDetails().getType()) {
             case CAREER_HISTORY -> new CareerHistoryResponse(edit);
             case EXPERIENCE -> new ExperienceResponse(edit);
             case CERTIFICATION -> new CertificationResponse(edit);
-            case TARGET_COMPANY, WRITING_STYLE, OTHER_TEXT ->
-                    throw new IllegalStateException("신규 소스 유형의 전용 상세 응답이 아직 정의되지 않았습니다.");
+            case TARGET_COMPANY -> new TargetCompanyResponse(edit);
+            case WRITING_STYLE -> new WritingStyleResponse(edit);
+            case OTHER_TEXT -> new OtherTextResponse(edit);
         };
     }
 }
