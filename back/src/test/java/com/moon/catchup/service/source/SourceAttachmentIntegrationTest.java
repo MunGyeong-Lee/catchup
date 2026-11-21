@@ -349,6 +349,15 @@ public class SourceAttachmentIntegrationTest {
         assertRegistrationFields(schemas.path("WritingStyleRegisterRequest"), "content", List.of());
         assertRegistrationFields(schemas.path("OtherTextRegisterRequest"), "content", List.of());
         assertFalse(registerSchema.path("properties").has("details"));
+        JsonNode sourceResponse = schemas.path("SourceResponse");
+        assertEquals("sourceType", sourceResponse.path("discriminator").path("propertyName").asText());
+        assertEquals(List.of("CareerHistoryResponse", "CertificationResponse", "ExperienceResponse",
+                        "OtherTextResponse", "TargetCompanyResponse", "WritingStyleResponse")
+                        .stream().map(name -> componentPath + name).toList(),
+                sourceResponse.path("oneOf").valueStream().map(schema -> schema.path("$ref").asText()).sorted().toList());
+        Map.of("TARGET_COMPANY", "TargetCompanyResponse", "WRITING_STYLE", "WritingStyleResponse",
+                "OTHER_TEXT", "OtherTextResponse").forEach((type, name) -> assertEquals(componentPath + name,
+                sourceResponse.path("discriminator").path("mapping").path(type).asText()));
         JsonNode attachmentView = paths.path(SOURCE_PATH + "/{sourceId}/attachments/{attachmentId}/view")
                 .path("get").path("responses");
         assertTrue(attachmentView.has("206"));
@@ -860,7 +869,7 @@ public class SourceAttachmentIntegrationTest {
         }
     }
 
-    /** 생성 응답의 식별자로 DB에 저장된 유형, 이름, 상세와 첨부 개수를 확인한다. */
+    /** 생성 응답의 식별자로 DB 저장값과 상세 API의 공통·유형별 필드 및 첨부를 확인한다. */
     private void assertStoredRegistration(HttpResponse<byte[]> response, String sourceType, String name,
                                           JsonNode expectedDetails, int attachmentCount) throws Exception {
         assertEquals(201, response.statusCode(), new String(response.body(), StandardCharsets.UTF_8));
@@ -875,6 +884,28 @@ public class SourceAttachmentIntegrationTest {
                         """, String.class, sourceId.asLong())));
         assertEquals(attachmentCount, this.jdbc.queryForObject(
                 "SELECT count(*) FROM attachments WHERE source_id = ?", Integer.class, sourceId.asLong()));
+
+        HttpResponse<byte[]> detailResponse = send(request(SOURCE_PATH + "/" + sourceId.asText()));
+        assertEquals(200, detailResponse.statusCode());
+        JsonNode detail = successBody(detailResponse);
+        assertEquals(sourceId, detail.path("sourceId"));
+        assertEquals(sourceType, detail.path("sourceType").asText());
+        assertEquals(name, detail.path("name").asText());
+        Instant createdAt = Instant.parse(detail.path("createdAt").asText());
+        assertEquals(createdAt, Instant.parse(detail.path("updatedAt").asText()));
+        assertFalse(detail.has("details"));
+        expectedDetails.properties().forEach(field -> assertEquals(field.getValue(), detail.path(field.getKey())));
+        JsonNode attachmentList = detail.path("attachments");
+        assertTrue(attachmentList.isArray());
+        assertEquals(attachmentCount, attachmentList.size());
+        if (attachmentCount > 0) {
+            JsonNode attachment = attachmentList.get(0);
+            assertTrue(attachment.path("attachmentId").isTextual());
+            assertEquals("한글.pdf", attachment.path("name").asText());
+            assertEquals("application/pdf", attachment.path("contentType").asText());
+            assertEquals(PDF.length, attachment.path("size").asLong());
+            assertFalse(attachment.has("objectKey"));
+        }
     }
 
     /** 필수 상세값과 공통 이름의 오류는 첨부 여부와 무관하며 기존 파일 형식을 검증한다. */
