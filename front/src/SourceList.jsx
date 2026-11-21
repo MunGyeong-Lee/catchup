@@ -18,7 +18,7 @@ function SourceAttachmentsDisclosure({ sourceId }) {
   )
 }
 
-function DeleteConfirmation({ item, deleting, onCancel, onDelete }) {
+function DeleteConfirmation({ source, deleting, onCancel, onDelete }) {
   const dialog = useRef(null)
 
   useEffect(() => {
@@ -30,8 +30,8 @@ function DeleteConfirmation({ item, deleting, onCancel, onDelete }) {
       event.preventDefault()
       if (!deleting) onCancel()
     }}>
-      <h2 id="delete-title">‘{item.name}’ 소스를 삭제할까요?</h2>
-      {item.hasAttachments && <p>첨부 파일도 함께 삭제돼요.</p>}
+      <h2 id="delete-title">‘{source.name}’ 소스를 삭제할까요?</h2>
+      {source.hasAttachments && <p>첨부 파일도 함께 삭제돼요.</p>}
       <button type="button" disabled={deleting} onClick={onCancel}>취소</button>{' '}
       <button type="button" disabled={deleting} onClick={onDelete}>삭제</button>
     </dialog>
@@ -77,11 +77,11 @@ export default function SourceList({ onRegister, onEdit, notice }) {
     setPageNumber(nextPage)
   }
 
-  async function prepareDelete(item) {
+  async function prepareDelete(source) {
     setDeletionNotice(null)
     setPending(true)
     try {
-      const response = await fetch(`/api/sources/${item.sourceId}`, { cache: 'no-store' })
+      const response = await fetch(`/api/sources/${source.sourceId}`, { cache: 'no-store' })
       if (response.status === 404) {
         setDeletionNotice({ error: '소스를 찾을 수 없어요.' })
         return
@@ -89,7 +89,7 @@ export default function SourceList({ onRegister, onEdit, notice }) {
       if (!response.ok) throw new Error('Unable to load attachment information')
       const payload = await response.json()
       if (payload.error !== null || !Array.isArray(payload.response?.attachments)) throw new Error('Invalid edit response')
-      setConfirming({ ...item, hasAttachments: payload.response.attachments.length > 0 })
+      setConfirming({ ...source, hasAttachments: payload.response.attachments.length > 0 })
     } catch {
       setDeletionNotice({ error: '소스를 불러오지 못했어요. 다시 시도해 주세요.' })
     } finally {
@@ -129,7 +129,7 @@ export default function SourceList({ onRegister, onEdit, notice }) {
         </div>
         {deletionNotice?.error && <p role="alert">{deletionNotice.error}</p>}
         {(deletionNotice?.success ?? (!deletionNotice && notice)) && <p role="status">{deletionNotice?.success ?? notice}</p>}
-        {confirming && <DeleteConfirmation item={confirming} deleting={deleting}
+        {confirming && <DeleteConfirmation source={confirming} deleting={deleting}
           onCancel={() => setConfirming(null)} onDelete={deleteSource} />}
         {!result && <p role="status">소스를 불러오는 중이에요.</p>}
         {result?.failed && (
