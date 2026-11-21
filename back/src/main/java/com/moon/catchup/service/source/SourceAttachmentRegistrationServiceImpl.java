@@ -11,6 +11,7 @@ import com.moon.catchup.repository.source.SourceAttachmentRepository;
 import com.moon.catchup.common.http.ApiException;
 import com.moon.catchup.common.http.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.dao.DataAccessException;
@@ -94,7 +95,8 @@ public class SourceAttachmentRegistrationServiceImpl implements SourceAttachment
         } catch (SourceAttachmentValidator.SizeLimitExceededException exception) {
             throw new ApiException(ErrorCode.PAYLOAD_TOO_LARGE);
         } catch (IllegalArgumentException exception) {
-            throw ApiException.validation(Map.of("attachments", exception.getMessage()));
+            Map<String, String> fieldErrors = Map.of("attachments", exception.getMessage());
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
         } catch (UncheckedIOException exception) {
             throw new ApiException(ErrorCode.ATTACHMENT_STORAGE_UNAVAILABLE, exception);
         }

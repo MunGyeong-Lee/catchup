@@ -2,6 +2,7 @@ package com.moon.catchup.service.source;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import com.moon.catchup.domain.source.SourceAttachmentSummaryVo;
@@ -11,6 +12,7 @@ import com.moon.catchup.storage.source.SourceAttachmentStorage;
 import com.moon.catchup.common.http.ApiException;
 import com.moon.catchup.common.http.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,8 @@ public class SourceAttachmentServiceImpl implements SourceAttachmentService {
      * @param attachmentId 첨부파일 식별자
      * @param range 단일 HTTP Range 헤더 값. 전체 요청이면 null
      * @return 첨부 메타데이터와 열어 둔 원본 스트림
+     * @throws ApiException 첨부를 찾을 수 없거나, 요청 범위가 유효하지 않거나, 원본을 열 수 없는 경우
+     *         범위 오류에는 원본 크기를 담은 Content-Range 헤더를 포함한다.
      */
     @Override
     public ReadableAttachment deliver(long sourceId, UUID attachmentId, String range) {
@@ -53,16 +57,20 @@ public class SourceAttachmentServiceImpl implements SourceAttachmentService {
                     openOriginal(stored.getKey(), null), size, null);
         }
 
-        HttpRange requested = parseRange(range, size);
         long first;
         long last;
         try {
+            HttpRange requested = parseRange(range);
             first = requested.getRangeStart(size);
             last = requested.getRangeEnd(size);
+            if (first < 0 || last < first || first >= size) {
+                throw new IllegalArgumentException("Byte range is outside the attachment.");
+            }
         } catch (IllegalArgumentException exception) {
-            throw ApiException.invalidRange(size);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.CONTENT_RANGE, "bytes */" + size);
+            throw new ApiException(ErrorCode.INVALID_RANGE, Map.of(), headers, null);
         }
-        if (first < 0 || last < first || first >= size) throw ApiException.invalidRange(size);
 
         String objectRange = "bytes=" + first + "-" + last;
         String contentRange = "bytes " + first + "-" + last + "/" + size;
@@ -73,19 +81,15 @@ public class SourceAttachmentServiceImpl implements SourceAttachmentService {
     /**
      * 바이트 범위를 해석하고 올바른 단일 범위만 허용한다.
      *
-     * @param range 단일 HTTP Range 헤더 값. 전체 요청이면 null
-     * @param size 원본의 바이트 수
-     * @return 검증한 바이트 범위
-     * @throws ApiException 단일 바이트 범위가 유효하지 않은 경우
+     * @param range 단일 HTTP Range 헤더 값
+     * @return HTTP 헤더에서 해석한 바이트 범위
+     * @throws IllegalArgumentException 헤더 형식이 잘못됐거나 범위가 한 개가 아닌 경우
      */
-    private static HttpRange parseRange(String range, long size) {
-        List<HttpRange> ranges;
-        try {
-            ranges = HttpRange.parseRanges(range);
-        } catch (IllegalArgumentException exception) {
-            throw ApiException.invalidRange(size);
+    private static HttpRange parseRange(String range) {
+        List<HttpRange> ranges = HttpRange.parseRanges(range);
+        if (ranges.size() != 1) {
+            throw new IllegalArgumentException("Exactly one byte range is required.");
         }
-        if (ranges.size() != 1) throw ApiException.invalidRange(size);
         return ranges.getFirst();
     }
 
