@@ -8,7 +8,7 @@ import com.moon.catchup.controller.source.dto.SourceResponse;
 import com.moon.catchup.controller.source.dto.SourceUpdateRequest;
 import com.moon.catchup.common.http.PageResponse;
 import com.moon.catchup.common.http.ResponseVo;
-import com.moon.catchup.controller.source.dto.SourceSummaryResponse;
+import com.moon.catchup.controller.source.dto.SourceListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -136,7 +136,7 @@ public interface SourceDocs {
         private String error;
         @Schema(name = "error_message")
         private String errorMessage;
-        private PageResponse<SourceSummaryResponse> response;
+        private PageResponse<SourceListResponse> response;
     }
 
     /** OpenAPI에 표시할 소스 상세 조회의 응답 형식이다. */

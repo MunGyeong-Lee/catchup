@@ -308,6 +308,11 @@ public class SourceAttachmentIntegrationTest {
         assertTrue(registration.has("201"));
         assertTrue(registration.has("413"));
         JsonNode schemas = api.path("components").path("schemas");
+        JsonNode listSchema = schemas.path("SourceListResponse");
+        assertEquals(List.of("#/components/schemas/CertificationListResponse",
+                        "#/components/schemas/ExperienceListResponse", "#/components/schemas/HistoryListResponse"),
+                listSchema.path("oneOf").valueStream().map(schema -> schema.path("$ref").asText()).sorted().toList());
+        assertTrue(schemas.path("ExperienceListResponse").path("properties").has("displayName"));
         JsonNode registerSchema = schemas.path("SourceRegisterRequest");
         assertEquals("sourceType", registerSchema.path("discriminator").path("propertyName").asText());
         assertEquals(3, registerSchema.path("oneOf").size());

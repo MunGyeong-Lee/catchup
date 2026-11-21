@@ -13,9 +13,9 @@ import lombok.Getter;
 
 /** 이력, 경험, 자격증의 목록 응답 형태를 정의한다. */
 @Schema(description = "소스 목록의 유형별 요약",
-        oneOf = {SourceSummaryResponse.SummaryResponse.class, SourceSummaryResponse.HistorySummaryResponse.class,
-                SourceSummaryResponse.CertificationSummaryResponse.class})
-public sealed interface SourceSummaryResponse {
+        oneOf = {SourceListResponse.ExperienceListResponse.class, SourceListResponse.HistoryListResponse.class,
+                SourceListResponse.CertificationListResponse.class})
+public sealed interface SourceListResponse {
     /**
      * 소스 유형에 맞는 목록 응답으로 요약 도메인 객체를 변환한다.
      *
@@ -23,13 +23,13 @@ public sealed interface SourceSummaryResponse {
      * @return 목록 표시용 소스 응답
      * @throws IllegalStateException 소스 유형의 전용 목록 응답이 아직 정의되지 않은 경우
      */
-    public static SourceSummaryResponse from(SourceSummaryVo item) {
+    public static SourceListResponse from(SourceSummaryVo item) {
         String sourceType = item.getType().name();
         return switch (item.getType()) {
-            case CAREER_HISTORY -> new HistorySummaryResponse(item.getId(), sourceType, item.getDisplayName(),
+            case CAREER_HISTORY -> new HistoryListResponse(item.getId(), sourceType, item.getDisplayName(),
                     item.getCreatedAt(), item.getHistoryType(), item.getStartMonth());
-            case EXPERIENCE -> new SummaryResponse(item.getId(), sourceType, item.getDisplayName(), item.getCreatedAt());
-            case CERTIFICATION -> new CertificationSummaryResponse(item.getId(), sourceType, item.getDisplayName(),
+            case EXPERIENCE -> new ExperienceListResponse(item.getId(), sourceType, item.getDisplayName(), item.getCreatedAt());
+            case CERTIFICATION -> new CertificationListResponse(item.getId(), sourceType, item.getDisplayName(),
                     item.getCreatedAt(), item.getIssuedOn());
             case TARGET_COMPANY, WRITING_STYLE, OTHER_TEXT ->
                     throw new IllegalStateException("신규 소스 유형의 전용 목록 응답이 아직 정의되지 않았습니다.");
@@ -40,7 +40,7 @@ public sealed interface SourceSummaryResponse {
     @Schema(description = "경험 요약")
     @Getter
     @AllArgsConstructor
-    public final class SummaryResponse implements SourceSummaryResponse {
+    public final class ExperienceListResponse implements SourceListResponse {
         @Schema(description = "소스 식별자")
         private final long sourceId;
         @Schema(description = "소스 유형")
@@ -56,7 +56,7 @@ public sealed interface SourceSummaryResponse {
     @Schema(description = "이력 요약")
     @Getter
     @AllArgsConstructor
-    public final class HistorySummaryResponse implements SourceSummaryResponse {
+    public final class HistoryListResponse implements SourceListResponse {
         @Schema(description = "소스 식별자")
         private final long sourceId;
         @Schema(description = "소스 유형")
@@ -77,7 +77,7 @@ public sealed interface SourceSummaryResponse {
     @Schema(description = "자격증 요약")
     @Getter
     @AllArgsConstructor
-    public final class CertificationSummaryResponse implements SourceSummaryResponse {
+    public final class CertificationListResponse implements SourceListResponse {
         @Schema(description = "소스 식별자")
         private final long sourceId;
         @Schema(description = "소스 유형")

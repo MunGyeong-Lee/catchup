@@ -8,7 +8,7 @@ import java.util.function.LongSupplier;
 import com.moon.catchup.common.http.ApiException;
 import com.moon.catchup.controller.source.dto.SourceResponse;
 import com.moon.catchup.controller.source.dto.SourceUpdateRequest;
-import com.moon.catchup.controller.source.dto.SourceSummaryResponse;
+import com.moon.catchup.controller.source.dto.SourceListResponse;
 import com.moon.catchup.controller.source.dto.SourceRegisterRequest;
 import com.moon.catchup.controller.source.dto.SourceRegisterResponse;
 import com.moon.catchup.service.source.SourceAttachmentRegistrationService;
@@ -56,7 +56,7 @@ public class SourceController implements SourceDocs {
                            @RequestParam(name = "page_size", defaultValue = "20") int pageSize,
                            @RequestParam(name = "order_by", required = false) String orderBy) {
         return ResponseVo.buildResponse(PageResponse.from(
-                this.sourceService.list(pageNumber, pageSize, orderBy).map(SourceSummaryResponse::from)));
+                this.sourceService.list(pageNumber, pageSize, orderBy).map(SourceListResponse::from)));
     }
 
     /**
