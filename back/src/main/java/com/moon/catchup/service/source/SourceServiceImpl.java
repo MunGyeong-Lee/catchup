@@ -68,6 +68,9 @@ public class SourceServiceImpl implements SourceService {
      * <p>유형, 공통 이름, 상세 객체, 허용되지 않은 필드, 필드 형식, 필수 값, 유형별 값 규칙의
      * 순서로 확인한다. 형식은 필드 이름 오름차순으로, 필수 값은 {@link SourceType}에 선언된 순서로
      * 검사한다. 문자열의 앞뒤 공백은 제거하고 빈 상세 값은 생략한다.
+     * 지원회사는 회사명, 문체 및 어투와 기타 텍스트는 본문 필드를 필수 문자열로 받는다.
+     * 지원회사의 직무, 회사·공고 메모, 인재상, 직무 기술서는 선택 문자열이다.
+     * 동일한 규칙을 첨부 포함 여부와 관계없이 적용한다.
      * 첫 실패에서 필드 오류 한 건을 던지므로 요청 객체의 키 순서는 결과에 영향을 주지 않는다.
      *
      * @param sourceType 요청 소스 유형 코드
@@ -104,7 +107,8 @@ public class SourceServiceImpl implements SourceService {
                 if (!text.isBlank()) {
                     normalizedDetails.put(field, text.strip());
                 }
-            } else if (value instanceof YearMonth || value instanceof LocalDate || value == SourceDateFormat.Invalid.VALUE) {
+            } else if (isDateField(field)
+                    && (value instanceof YearMonth || value instanceof LocalDate || value == SourceDateFormat.Invalid.VALUE)) {
                 normalizedDetails.put(field, value);
             } else if (value != null) {
                 throw ApiException.validation(Map.of(detailErrorField(field), "입력 형식을 확인해 주세요."));
@@ -118,6 +122,19 @@ public class SourceServiceImpl implements SourceService {
 
         validateDetails(type, normalizedDetails);
         return SourceDetailsVo.fromValidated(type, sourceName.strip(), normalizedDetails);
+    }
+
+    /**
+     * 상세 필드가 등록 바인딩에서 날짜 또는 연월로 변환되는지 확인한다.
+     *
+     * @param field 상세 입력의 필드 이름
+     * @return 날짜 또는 연월 필드이면 true
+     */
+    private static boolean isDateField(String field) {
+        return switch (field) {
+            case "startMonth", "endMonth", "issuedOn", "expiresOn" -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -233,33 +250,49 @@ public class SourceServiceImpl implements SourceService {
     /**
      * 소스 유형별 기간, 진행 상태, 링크 규칙을 검증한다.
      *
-     * <p>이력 구분을 먼저 확인한다. 기간은 시작 형식, 종료 형식, 시작과 종료의 순서를 차례로
-     * 확인한다. 이력의 진행 중 여부와 종료 연월의 관계를 검사한 뒤 해당 유형의 링크를 검증한다.
+     * <p>이력은 구분, 활동 기간, 진행 상태 순으로 확인하고 경험은 활동 기간과 관련 링크를
+     * 차례로 확인한다. 자격증은 취득일·만료일 및 날짜 순서를 확인한 뒤 검증 링크를 확인한다.
+     * 지원회사, 문체 및 어투, 기타 텍스트에는 {@link #validate}의 공통 입력 검증을 적용한다.
      *
      * @param sourceType 요청 소스 유형 코드
      * @param details 유형별 상세 입력
      * @throws ApiException 유형별 값 규칙을 위반한 경우
      */
     private static void validateDetails(SourceType sourceType, Map<String, Object> details) {
-        if (sourceType == SourceType.CAREER_HISTORY) {
-            String historyType = (String) details.get("historyType");
-            if (historyType != null && !Set.of("WORK", "STUDY", "TRAINING", "OTHER").contains(historyType)) {
-                throw ApiException.validation(Map.of("historyType", "이력 구분을 확인해 주세요."));
+        switch (sourceType) {
+            case CAREER_HISTORY -> {
+                String historyType = (String) details.get("historyType");
+                if (historyType != null && !Set.of("WORK", "STUDY", "TRAINING", "OTHER").contains(historyType)) {
+                    Map<String, String> fieldErrors = Map.of("historyType", "이력 구분을 확인해 주세요.");
+                    throw ApiException.validation(fieldErrors);
+                }
+                validateActivityPeriod(details);
+                if (Boolean.TRUE.equals(details.get("ongoing")) && details.containsKey("endMonth")) {
+                    throw ApiException.validation(Map.of("endMonth", "진행 중인 이력에는 종료 연월을 입력할 수 없습니다."));
+                }
+            }
+            case EXPERIENCE -> {
+                validateActivityPeriod(details);
+                validateLink(details, "relatedLink");
+            }
+            case CERTIFICATION -> {
+                validatePeriod(details, "issuedOn", "expiresOn", LocalDate.class, SourceDateFormat::parseDate);
+                validateLink(details, "verificationLink");
+            }
+            case TARGET_COMPANY, WRITING_STYLE, OTHER_TEXT -> {
+                // 공통 입력 검증 이후 추가로 검사할 값 규칙이 없다.
             }
         }
-        if (sourceType == SourceType.CERTIFICATION) {
-            validatePeriod(details, "issuedOn", "expiresOn", LocalDate.class, SourceDateFormat::parseDate);
-            validateLink(details, "verificationLink");
-            return;
-        }
+    }
 
+    /**
+     * 이력과 경험에 공통으로 적용되는 활동 연월 형식과 기간 순서를 검증한다.
+     *
+     * @param details 시작 연월과 종료 연월을 포함할 수 있는 상세 입력
+     * @throws ApiException 연월 형식이나 기간 순서를 위반한 경우
+     */
+    private static void validateActivityPeriod(Map<String, Object> details) {
         validatePeriod(details, "startMonth", "endMonth", YearMonth.class, SourceDateFormat::parseMonth);
-        if (Boolean.TRUE.equals(details.get("ongoing")) && details.containsKey("endMonth")) {
-            throw ApiException.validation(Map.of("endMonth", "진행 중인 이력에는 종료 연월을 입력할 수 없습니다."));
-        }
-        if (sourceType == SourceType.EXPERIENCE) {
-            validateLink(details, "relatedLink");
-        }
     }
 
     /**

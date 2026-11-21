@@ -48,12 +48,15 @@ public abstract sealed class SourceResponse
      *
      * @param edit 저장된 소스 상세와 첨부 요약
      * @return 해당 유형의 소스 상세 응답
+     * @throws IllegalStateException 소스 유형의 전용 상세 응답이 아직 정의되지 않은 경우
      */
     public static SourceResponse from(SourceEditVo edit) {
         return switch (edit.getDetails().getType()) {
             case CAREER_HISTORY -> new CareerHistoryResponse(edit);
             case EXPERIENCE -> new ExperienceResponse(edit);
             case CERTIFICATION -> new CertificationResponse(edit);
+            case TARGET_COMPANY, WRITING_STYLE, OTHER_TEXT ->
+                    throw new IllegalStateException("신규 소스 유형의 전용 상세 응답이 아직 정의되지 않았습니다.");
         };
     }
 }
