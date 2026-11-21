@@ -1,6 +1,8 @@
 CREATE TABLE IF NOT EXISTS sources (
     source_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    source_type text NOT NULL CHECK (source_type IN ('CAREER_HISTORY', 'EXPERIENCE', 'CERTIFICATION')),
+    source_type text NOT NULL CONSTRAINT sources_source_type_check CHECK (
+        source_type IN ('CAREER_HISTORY', 'EXPERIENCE', 'CERTIFICATION', 'TARGET_COMPANY', 'WRITING_STYLE', 'OTHER_TEXT')
+    ),
     name text NOT NULL,
     details jsonb NOT NULL,
     created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -20,6 +20,7 @@ import lombok.Getter;
  *
  * <p>지원하지 않거나 누락된 유형은 공통 DTO로 읽어 서비스에서 기존 필드 오류를 반환한다.
  * 유형에 정의되지 않은 키와 잘못된 값의 원래 형태도 유지해 서비스의 검증 순서를 적용한다.
+ * JSON 본문과 multipart의 source 파트에 동일한 최상위 필드와 필수 입력을 적용한다.
  */
 @Getter
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY,
@@ -27,20 +28,29 @@ import lombok.Getter;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = CareerHistoryRegisterRequest.class, name = "CAREER_HISTORY"),
         @JsonSubTypes.Type(value = ExperienceRegisterRequest.class, name = "EXPERIENCE"),
-        @JsonSubTypes.Type(value = CertificationRegisterRequest.class, name = "CERTIFICATION")
+        @JsonSubTypes.Type(value = CertificationRegisterRequest.class, name = "CERTIFICATION"),
+        @JsonSubTypes.Type(value = TargetCompanyRegisterRequest.class, name = "TARGET_COMPANY"),
+        @JsonSubTypes.Type(value = WritingStyleRegisterRequest.class, name = "WRITING_STYLE"),
+        @JsonSubTypes.Type(value = OtherTextRegisterRequest.class, name = "OTHER_TEXT")
 })
 @Schema(description = "소스 유형별 등록 요청", discriminatorProperty = "sourceType",
-        oneOf = {CareerHistoryRegisterRequest.class, ExperienceRegisterRequest.class, CertificationRegisterRequest.class},
+        oneOf = {CareerHistoryRegisterRequest.class, ExperienceRegisterRequest.class, CertificationRegisterRequest.class,
+                TargetCompanyRegisterRequest.class, WritingStyleRegisterRequest.class, OtherTextRegisterRequest.class},
         discriminatorMapping = {
                 @DiscriminatorMapping(value = "CAREER_HISTORY", schema = CareerHistoryRegisterRequest.class),
                 @DiscriminatorMapping(value = "EXPERIENCE", schema = ExperienceRegisterRequest.class),
-                @DiscriminatorMapping(value = "CERTIFICATION", schema = CertificationRegisterRequest.class)
+                @DiscriminatorMapping(value = "CERTIFICATION", schema = CertificationRegisterRequest.class),
+                @DiscriminatorMapping(value = "TARGET_COMPANY", schema = TargetCompanyRegisterRequest.class),
+                @DiscriminatorMapping(value = "WRITING_STYLE", schema = WritingStyleRegisterRequest.class),
+                @DiscriminatorMapping(value = "OTHER_TEXT", schema = OtherTextRegisterRequest.class)
         })
 public sealed class SourceRegisterRequest
-        permits CareerHistoryRegisterRequest, ExperienceRegisterRequest, CertificationRegisterRequest {
+        permits CareerHistoryRegisterRequest, ExperienceRegisterRequest, CertificationRegisterRequest,
+                TargetCompanyRegisterRequest, WritingStyleRegisterRequest, OtherTextRegisterRequest {
     @JsonProperty
     @Schema(description = "소스 유형", requiredMode = Schema.RequiredMode.REQUIRED,
-            allowableValues = {"CAREER_HISTORY", "EXPERIENCE", "CERTIFICATION"})
+            allowableValues = {"CAREER_HISTORY", "EXPERIENCE", "CERTIFICATION",
+                    "TARGET_COMPANY", "WRITING_STYLE", "OTHER_TEXT"})
     private String sourceType;
 
     @JsonProperty

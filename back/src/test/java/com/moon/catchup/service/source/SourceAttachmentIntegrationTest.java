@@ -53,6 +53,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /** HTTP 요청과 PostgreSQL을 연결해 첨부 등록과 읽기 계약을 검증한다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -320,12 +321,42 @@ public class SourceAttachmentIntegrationTest {
         }
         JsonNode registerSchema = schemas.path("SourceRegisterRequest");
         assertEquals("sourceType", registerSchema.path("discriminator").path("propertyName").asText());
-        assertEquals(3, registerSchema.path("oneOf").size());
+        Map<String, String> registrationSchemas = Map.of(
+                "CAREER_HISTORY", "CareerHistoryRegisterRequest",
+                "EXPERIENCE", "ExperienceRegisterRequest",
+                "CERTIFICATION", "CertificationRegisterRequest",
+                "TARGET_COMPANY", "TargetCompanyRegisterRequest",
+                "WRITING_STYLE", "WritingStyleRegisterRequest",
+                "OTHER_TEXT", "OtherTextRegisterRequest");
+        String componentPath = "#/components/schemas/";
+        assertEquals(registrationSchemas.values().stream().map(name -> componentPath + name).sorted().toList(),
+                registerSchema.path("oneOf").valueStream().map(schema -> schema.path("$ref").asText()).sorted().toList());
+        assertEquals(registrationSchemas.keySet().stream().sorted().toList(),
+                registerSchema.path("properties").path("sourceType").path("enum")
+                        .valueStream().map(JsonNode::asText).sorted().toList());
+        registrationSchemas.forEach((type, schema) -> assertEquals(componentPath + schema,
+                registerSchema.path("discriminator").path("mapping").path(type).asText()));
+        assertRegistrationFields(schemas.path("TargetCompanyRegisterRequest"), "companyName",
+                List.of("jobTitle", "content", "idealCandidateProfile", "jobDescription"));
+        assertRegistrationFields(schemas.path("WritingStyleRegisterRequest"), "content", List.of());
+        assertRegistrationFields(schemas.path("OtherTextRegisterRequest"), "content", List.of());
         assertFalse(registerSchema.path("properties").has("details"));
         JsonNode attachmentView = paths.path(SOURCE_PATH + "/{sourceId}/attachments/{attachmentId}/view")
                 .path("get").path("responses");
         assertTrue(attachmentView.has("206"));
         assertTrue(attachmentView.has("416"));
+    }
+
+    /** 유형별 OpenAPI 필드의 문자열 형식과 필수 여부를 확인한다. */
+    private static void assertRegistrationFields(JsonNode schema, String requiredField, List<String> optionalFieldList) {
+        JsonNode fields = schema.path("allOf").valueStream().filter(part -> part.has("properties"))
+                .findFirst().orElse(schema);
+        List<String> requiredFieldList = schema.path("required").valueStream().map(JsonNode::asText).sorted().toList();
+        assertEquals(List.of(requiredField, "name", "sourceType"), requiredFieldList);
+        assertEquals("string", fields.path("properties").path(requiredField).path("type").asText());
+        for (String field : optionalFieldList) {
+            assertEquals("string", fields.path("properties").path(field).path("type").asText());
+        }
     }
 
     /** 소스 변경 실패가 기존 소스와 첨부 원본을 유지하는지 확인한다. */
@@ -772,6 +803,102 @@ public class SourceAttachmentIntegrationTest {
                         "SELECT details ->> 'name' FROM sources WHERE source_id = ?", String.class, sourceId));
             }
         }
+    }
+
+    /** 신규 세 유형을 두 요청 형식으로 등록하고 PostgreSQL의 저장값과 첨부 참조를 확인한다. */
+    @Test
+    public void registersNewSourceTypesWithAndWithoutAttachments() throws Exception {
+        String name = "신규 등록 검증 " + UUID.randomUUID();
+        List<String> detailList = List.of(
+                """
+                {"companyName":"Company","jobTitle":"Engineer","content":"Notes",
+                 "idealCandidateProfile":"Collaborative","jobDescription":"Develop services"}
+                """,
+                """
+                {"content":"Use short sentences."}
+                """,
+                """
+                {"content":"Reference text"}
+                """);
+        List<String> typeList = List.of("TARGET_COMPANY", "WRITING_STYLE", "OTHER_TEXT");
+        try {
+            for (int index = 0; index < typeList.size(); index++) {
+                String sourceType = typeList.get(index);
+                ObjectNode expectedDetails = (ObjectNode) this.mapper.readTree(detailList.get(index));
+                String body = this.mapper.createObjectNode().setAll(expectedDetails)
+                        .put("sourceType", sourceType).put("name", "  " + name + "  ").toString();
+                HttpResponse<byte[]> json = send(request(SOURCE_PATH).header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)));
+                assertStoredRegistration(json, sourceType, name, expectedDetails, 0);
+                HttpResponse<byte[]> withAttachment = multipart(SOURCE_PATH, "POST", UUID.randomUUID().toString(),
+                        body, PDF);
+                assertStoredRegistration(withAttachment, sourceType, name, expectedDetails, 1);
+            }
+        } finally {
+            this.jdbc.update("DELETE FROM upload_attempts WHERE source_id IN (SELECT source_id FROM sources WHERE name = ?)", name);
+            this.jdbc.update("DELETE FROM attachments WHERE source_id IN (SELECT source_id FROM sources WHERE name = ?)", name);
+            this.jdbc.update("DELETE FROM sources WHERE name = ?", name);
+        }
+    }
+
+    /** 생성 응답의 식별자로 DB에 저장된 유형, 이름, 상세와 첨부 개수를 확인한다. */
+    private void assertStoredRegistration(HttpResponse<byte[]> response, String sourceType, String name,
+                                          JsonNode expectedDetails, int attachmentCount) throws Exception {
+        assertEquals(201, response.statusCode(), new String(response.body(), StandardCharsets.UTF_8));
+        JsonNode sourceId = successBody(response).path("sourceId");
+        assertTrue(sourceId.isIntegralNumber());
+        assertTrue(sourceId.asLong() > 0);
+        assertEquals(this.mapper.createObjectNode().put("sourceType", sourceType).put("name", name)
+                        .set("details", expectedDetails),
+                this.mapper.readTree(this.jdbc.queryForObject("""
+                        SELECT jsonb_build_object('sourceType', source_type, 'name', name, 'details', details)::text
+                        FROM sources WHERE source_id = ?
+                        """, String.class, sourceId.asLong())));
+        assertEquals(attachmentCount, this.jdbc.queryForObject(
+                "SELECT count(*) FROM attachments WHERE source_id = ?", Integer.class, sourceId.asLong()));
+    }
+
+    /** 필수 상세값과 공통 이름의 오류는 첨부 여부와 무관하며 기존 파일 형식을 검증한다. */
+    @Test
+    public void rejectsInvalidNewSourceRegistrations() throws Exception {
+        String name = "실패 등록 검증 " + UUID.randomUUID();
+        Map<String, String> requiredFields = Map.of(
+                "TARGET_COMPANY", "companyName", "WRITING_STYLE", "content", "OTHER_TEXT", "content");
+        for (Map.Entry<String, String> entry : requiredFields.entrySet()) {
+            String sourceType = entry.getKey();
+            String field = entry.getValue();
+            assertNewSourceFieldError("""
+                    {"sourceType":"%s","name":"%s"}
+                    """.formatted(sourceType, name), field, "필수 입력 항목입니다.");
+            assertNewSourceFieldError("""
+                    {"sourceType":"%s","%s":"유형별 입력"}
+                    """.formatted(sourceType, field), "name", "필수 입력 항목입니다.");
+            assertNewSourceFieldError("""
+                    {"sourceType":"%s","name":"%s","%s":123}
+                    """.formatted(sourceType, name, field), field, "입력 형식을 확인해 주세요.");
+        }
+        HttpResponse<byte[]> invalidFile = multipart(SOURCE_PATH, "POST", UUID.randomUUID().toString(), """
+                {"sourceType":"TARGET_COMPANY","name":"%s","companyName":"Company"}
+                """.formatted(name), "<html>".getBytes(StandardCharsets.UTF_8));
+        assertEquals(400, invalidFile.statusCode());
+        JsonNode error = this.mapper.readTree(invalidFile.body());
+        assertEquals("VALIDATION_FAILED", error.path("error").asText());
+        assertTrue(error.path("field_errors").has("attachments"));
+        assertTrue(this.objects.isEmpty());
+        assertEquals(0, this.jdbc.queryForObject("SELECT count(*) FROM sources WHERE name = ?", Integer.class, name));
+    }
+
+    /** 같은 입력의 JSON과 multipart 응답이 동일한 단일 필드 오류인지 확인한다. */
+    private void assertNewSourceFieldError(String body, String field, String message) throws Exception {
+        HttpResponse<byte[]> json = send(request(SOURCE_PATH).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body)));
+        HttpResponse<byte[]> withAttachment = multipart(SOURCE_PATH, "POST", UUID.randomUUID().toString(), body, PDF);
+        assertEquals(400, json.statusCode());
+        assertEquals(400, withAttachment.statusCode());
+        JsonNode error = this.mapper.readTree(json.body());
+        assertEquals(error, this.mapper.readTree(withAttachment.body()));
+        assertEquals("VALIDATION_FAILED", error.path("error").asText());
+        assertEquals(this.mapper.createObjectNode().put(field, message), error.path("field_errors"));
     }
 
     /** 테스트 서버의 지정 경로에 요청을 구성한다. */
