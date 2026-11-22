@@ -1,3 +1,4 @@
+-- 최종 DB 구조를 초기화한다. 재실행 시 기존 테이블과 데이터를 유지한다.
 CREATE TABLE IF NOT EXISTS sources (
     source_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     source_type text NOT NULL CONSTRAINT sources_source_type_check CHECK (
@@ -33,3 +34,11 @@ CREATE INDEX IF NOT EXISTS attachments_source_index
 
 CREATE INDEX IF NOT EXISTS upload_attempts_source_index
     ON upload_attempts(source_id);
+
+CREATE TABLE IF NOT EXISTS templates (
+    template_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    document_type text NOT NULL,
+    title text NOT NULL,
+    structure jsonb NOT NULL CHECK (jsonb_typeof(structure) = 'object'),
+    created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
