@@ -9,6 +9,7 @@ import com.moon.catchup.controller.source.dto.SourceUpdateRequest;
 import com.moon.catchup.common.http.PageResponse;
 import com.moon.catchup.common.http.ResponseVo;
 import com.moon.catchup.controller.source.dto.SourceListResponse;
+import com.moon.catchup.domain.source.SourceType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,13 +28,18 @@ public interface SourceDocs {
      * @param pageNumber 1부터 시작하는 페이지 번호
      * @param pageSize 페이지당 항목 수
      * @param orderBy 선택 정렬 조건
+     * @param sourceType 선택 소스 유형. 전체 목록 조회 시 null
      * @return 요청 결과를 담은 공통 응답
      */
     @Operation(summary = "소스 목록 조회",
-            description = "이력, 경험, 자격증, 지원회사, 문체 및 어투, 기타 소스 목록의 한 페이지를 조회합니다. 정렬 생략 시 최근 등록 순이며, 등록 시각은 UTC ISO 8601입니다. 항목마다 저장된 첨부파일 유무를 반환합니다.")
+            description = "소스 목록의 한 페이지를 조회합니다. 유형을 생략하거나 빈 값 또는 공백만 보내면 전체 목록을 조회합니다. "
+                    + "유형을 지정하면 일치하는 결과를 기준으로 정렬하고 페이지와 전체 건수를 계산합니다. "
+                    + "정렬 생략 시 최근 등록 순이며, 등록 시각은 UTC ISO 8601입니다. 항목마다 저장된 첨부파일 유무를 반환합니다.")
     @ApiResponse(responseCode = "200", description = "소스 목록 페이지",
             content = @Content(schema = @Schema(implementation = SourcePageEnvelope.class)))
-    @ApiResponse(responseCode = "400", description = "페이지 또는 정렬 매개변수가 유효하지 않음")
+    @ApiResponse(responseCode = "400", description = "페이지, 정렬 또는 유형 매개변수가 유효하지 않음. "
+            + "유형을 변환할 수 없으면 INVALID_REQUEST를 반환하며 field_errors는 생략됩니다.",
+            content = @Content(schema = @Schema(implementation = ResponseVo.class)))
     public ResponseVo list(
             @Parameter(description = "페이지 번호", schema = @Schema(defaultValue = "1", minimum = "1")) int pageNumber,
             @Parameter(description = "페이지 크기",
@@ -41,7 +47,9 @@ public interface SourceDocs {
             @Parameter(description = "쉼표로 구분한 property:ASC 또는 property:DESC 목록. "
                     + "허용 속성은 createdAt, sourceId, sourceType, name입니다. "
                     + "누락된 createdAt과 sourceId는 각 내림차순으로 덧붙입니다.",
-                    example = "name:ASC,createdAt:DESC") String orderBy);
+                    example = "name:ASC,createdAt:DESC") String orderBy,
+            @Parameter(description = "대문자 소스 유형 코드를 지정합니다. 반복된 키는 첫 값을 사용하고 코드의 앞뒤 공백은 제거합니다. "
+                    + "쉼표로 연결한 코드는 유효하지 않습니다.") SourceType sourceType);
 
     /**
      * 파일 없이 소스를 등록하는 작업을 문서화한다.

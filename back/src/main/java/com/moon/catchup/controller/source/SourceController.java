@@ -12,6 +12,7 @@ import com.moon.catchup.controller.source.dto.SourceUpdateRequest;
 import com.moon.catchup.controller.source.dto.SourceListResponse;
 import com.moon.catchup.controller.source.dto.SourceRegisterRequest;
 import com.moon.catchup.controller.source.dto.SourceRegisterResponse;
+import com.moon.catchup.domain.source.SourceType;
 import com.moon.catchup.service.source.SourceAttachmentRegistrationService;
 import com.moon.catchup.service.source.SourceService;
 import com.moon.catchup.service.source.SourceManagementService;
@@ -46,19 +47,24 @@ public class SourceController implements SourceDocs {
     /**
      * 소스 목록 조회
      *
+     * <p>유형을 생략하거나 빈 값 또는 공백만 보내면 전체 목록을 조회한다. 유형이 지정되면 필터링한 결과로
+     * 페이지와 전체 건수를 계산한다. Spring MVC는 반복된 유형의 첫 값을 사용하고 코드의 앞뒤 공백을 제거한다.
+     *
      * @param pageNumber 1부터 시작하는 페이지 번호
      * @param pageSize 페이지당 항목 수
      * @param orderBy 선택 정렬 조건
+     * @param sourceType 선택 소스 유형. 전체 목록 조회 시 null
      * @return 요청 결과를 담은 공통 응답
+     * @throws ApiException 페이지 또는 정렬 조건이 유효하지 않은 경우
      */
     @GetMapping("/api/sources")
     @Override
-    public ResponseVo list(@RequestParam(name = "page_number", defaultValue = "1"
-                               ) int pageNumber,
+    public ResponseVo list(@RequestParam(name = "page_number", defaultValue = "1") int pageNumber,
                            @RequestParam(name = "page_size", defaultValue = "20") int pageSize,
-                           @RequestParam(name = "order_by", required = false) String orderBy) {
+                           @RequestParam(name = "order_by", required = false) String orderBy,
+                           @RequestParam(name = "sourceType", required = false) SourceType sourceType) {
         return ResponseVo.buildResponse(PageResponse.from(
-                this.sourceService.list(pageNumber, pageSize, orderBy).map(SourceListResponse::from)));
+                this.sourceService.list(pageNumber, pageSize, orderBy, sourceType).map(SourceListResponse::from)));
     }
 
     /**
