@@ -43,10 +43,13 @@ public class SourceManagementServiceImpl implements SourceManagementService {
     }
 
     /**
-     * 소스를 잠근 뒤 검증한 입력과 첨부 제거를 함께 저장한다.
+     * 검증한 입력과 첨부 제거를 한 트랜잭션에서 저장한다.
+     *
+     * <p>요청 유형과 상세 전체를 먼저 검증하고, 소스를 잠근 뒤
+     * {@link SourceServiceImpl#modify}의 저장 규칙을 적용한다.
      *
      * @param id 소스 식별자
-     * @param type 소스 유형 또는 콘텐츠 유형
+     * @param type 저장할 소스 유형 코드
      * @param name 요청의 공통 소스 이름
      * @param details 유형별 상세 입력
      * @param removedIds 제거할 기존 첨부파일 식별자 목록
@@ -64,8 +67,11 @@ public class SourceManagementServiceImpl implements SourceManagementService {
     /**
      * 새 파일을 예약하는 업로드 흐름에서 소스 수정을 처리한다.
      *
+     * <p>첨부 검증과 업로드 예약 및 확정은
+     * {@link SourceAttachmentRegistrationServiceImpl#updateUpload}에 위임한다.
+     *
      * @param id 소스 식별자
-     * @param type 소스 유형 또는 콘텐츠 유형
+     * @param type 저장할 소스 유형 코드
      * @param name 요청의 공통 소스 이름
      * @param details 유형별 상세 입력
      * @param removedIds 제거할 기존 첨부파일 식별자 목록

@@ -1,6 +1,7 @@
 package com.moon.catchup.controller.source;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import com.moon.catchup.controller.source.dto.SourceRegisterRequest;
@@ -13,8 +14,10 @@ import com.moon.catchup.domain.source.SourceType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Getter;
@@ -23,6 +26,18 @@ import org.springframework.web.multipart.MultipartFile;
 /** 소스 목록, 등록, 상세 조회, 수정 및 삭제 API의 OpenAPI 문서를 정의한다. */
 @Tag(name = "Sources")
 public interface SourceDocs {
+    /** JSON 본문과 multipart의 source 파트에 공통으로 적용하는 수정 계약이다. */
+    public static final String SOURCE_UPDATE_INPUT =
+            "sourceType, 공통 이름 name, 유형별 입력 전체를 담은 details를 보냅니다. 유형을 변경할 수 있습니다. "
+                    + "지원회사(TARGET_COMPANY)는 details.companyName이 필수이며 jobTitle, content, "
+                    + "idealCandidateProfile, jobDescription은 선택 문자열입니다. "
+                    + "문체 및 어투(WRITING_STYLE)와 기타(OTHER_TEXT)는 details.content가 필수 문자열입니다. "
+                    + "removeAttachmentIds에 지정한 기존 첨부만 제거하며 생략하면 모두 유지합니다. "
+                    + "소스 식별자와 최초 등록 시각은 유지됩니다. "
+                    + "새 첨부를 추가하려면 multipart/form-data의 source 파트에 같은 JSON을 보내고 "
+                    + "requestId와 files를 함께 보냅니다. 같은 요청을 재시도할 때는 같은 requestId를 사용합니다. "
+                    + "새 첨부 메타데이터와 소스 변경은 함께 확정됩니다. 제거한 원본은 커밋 후 비동기로 정리합니다.";
+
     /**
      * 소스 요약 목록을 반환하는 작업을 문서화한다.
      *
@@ -173,12 +188,16 @@ public interface SourceDocs {
      * @param req 역직렬화한 요청 본문
      * @return 요청 결과를 담은 공통 응답
      */
-    @Operation(summary = "소스 수정",
-            description = "JSON 본문으로 공통 이름과 유형별 상세 입력 전체 및 삭제할 첨부 식별자를 받습니다.")
+    @Operation(summary = "소스 수정 (JSON 요청)",
+            description = SOURCE_UPDATE_INPUT,
+            requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = SourceUpdateBody.class))))
     @ApiResponse(responseCode = "200", description = "수정한 소스 식별자")
-    @ApiResponse(responseCode = "400", description = "요청 형식, 입력 또는 제거 대상 첨부 오류")
+    @ApiResponse(responseCode = "400", description = "요청 형식, 입력 또는 제거 대상 첨부 오류. "
+            + "입력 검증 오류는 VALIDATION_FAILED와 field_errors를 반환합니다.")
     @ApiResponse(responseCode = "404", description = "소스가 존재하지 않음")
-    public ResponseVo update(long sourceId, SourceUpdateRequest req);
+    public ResponseVo update(long sourceId,
+                             @Parameter(schema = @Schema(implementation = SourceUpdateBody.class)) SourceUpdateRequest req);
 
     /**
      * 새 첨부를 추가하는 소스 수정을 문서화한다.
@@ -189,15 +208,22 @@ public interface SourceDocs {
      * @param files 요청에 포함된 첨부파일 목록
      * @return 요청 결과를 담은 공통 응답
      */
-    @Operation(summary = "새 첨부 파일이 있는 소스 수정",
-            description = "source JSON 파트, requestId 및 새 files 파트를 받습니다.")
+    @Operation(summary = "소스 수정 (새 첨부파일 포함)",
+            description = SOURCE_UPDATE_INPUT,
+            requestBody = @RequestBody(required = true, content = {
+                    @Content(mediaType = "application/json", schema = @Schema(implementation = SourceUpdateBody.class)),
+                    @Content(mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = SourceUpdateMultipartBody.class),
+                            encoding = @Encoding(name = "source", contentType = "application/json"))
+            }))
     @ApiResponse(responseCode = "200", description = "수정한 소스 식별자")
-    @ApiResponse(responseCode = "400", description = "요청 형식, 소스 입력 또는 첨부 파일 오류")
+    @ApiResponse(responseCode = "400", description = "요청 형식, 소스 입력 또는 첨부 파일 오류. "
+            + "입력 검증 오류는 VALIDATION_FAILED와 field_errors를 반환합니다.")
     @ApiResponse(responseCode = "404", description = "소스가 존재하지 않음")
     @ApiResponse(responseCode = "413", description = "첨부 파일 크기 제한 초과")
     @ApiResponse(responseCode = "503", description = "첨부 원본 저장소 오류")
-    public ResponseVo updateAttachments(long sourceId, SourceUpdateRequest req, UUID requestId,
-                                 List<MultipartFile> files);
+    public ResponseVo updateAttachments(long sourceId, SourceUpdateRequest req,
+                                        @Parameter(hidden = true) UUID requestId, List<MultipartFile> files);
 
     /**
      * 소스 전체 삭제를 문서화한다.
@@ -217,6 +243,32 @@ public interface SourceDocs {
         @Schema(name = "error_message")
         private String errorMessage;
         private PageResponse<SourceListResponse> response;
+    }
+
+    /** OpenAPI에서 JSON 수정 본문과 multipart의 source 파트에 사용하는 스키마다. */
+    @Getter
+    public static final class SourceUpdateBody {
+        @Schema(implementation = SourceType.class, requiredMode = Schema.RequiredMode.REQUIRED)
+        private String sourceType;
+        @Schema(description = "공통 소스 이름", requiredMode = Schema.RequiredMode.REQUIRED)
+        private String name;
+        @Schema(description = "저장할 유형별 입력 전체. 연월은 YYYY-MM, 달력 날짜는 YYYY-MM-DD 문자열입니다.",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        private Map<String, Object> details;
+        @Schema(description = "제거할 기존 첨부 식별자")
+        private List<UUID> removeAttachmentIds;
+    }
+
+    /** OpenAPI에서 새 첨부와 함께 보낼 수정 폼을 설명한다. */
+    @Getter
+    public static final class SourceUpdateMultipartBody {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+        private SourceUpdateBody source;
+        @Schema(description = "동일한 수정 요청을 재시도할 때 재사용하는 식별자",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        private UUID requestId;
+        @Schema(description = "추가할 첨부 파일", requiredMode = Schema.RequiredMode.REQUIRED)
+        private List<MultipartFile> files;
     }
 
     /** OpenAPI에 표시할 소스 상세 조회의 응답 형식이다. */
