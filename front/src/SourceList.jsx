@@ -8,29 +8,16 @@ const SOURCE_PAGE_SIZE = 9
 
 const historyNames = { WORK: '근무', STUDY: '학업', TRAINING: '교육', OTHER: '기타' }
 
-async function fetchSourcePage(pageNumber, signal) {
-  const response = await fetch(`/api/sources?page_number=${pageNumber}&page_size=${SOURCE_PAGE_SIZE}`, {
+async function fetchSourcePage(pageNumber, sourceType, signal) {
+  const query = new URLSearchParams({ page_number: pageNumber, page_size: SOURCE_PAGE_SIZE })
+  if (sourceType) query.set('sourceType', sourceType)
+  const response = await fetch(`/api/sources?${query}`, {
     signal, cache: 'no-store',
   })
   if (!response.ok) throw new Error('Source list failed')
   const payload = await response.json()
   if (payload.error !== null || !Array.isArray(payload.response?.items)) throw new Error('Invalid list response')
   return payload.response
-}
-
-async function fetchCategorySources(category, signal) {
-  const sourceList = []
-  let nextPage = 1
-  let totalPages
-
-  do {
-    const sourcePage = await fetchSourcePage(nextPage, signal)
-    sourceList.push(...sourcePage.items.filter(source => source.sourceType === category))
-    totalPages = sourcePage.totalPages
-    nextPage += 1
-  } while (nextPage <= totalPages)
-
-  return sourceList
 }
 
 function SourceCard({ source, timeZone, pending, onEdit, onDelete }) {
@@ -129,17 +116,7 @@ export default function SourceList({ onRegister, onEdit, notify }) {
 
   useEffect(() => {
     const controller = new AbortController()
-    const request = category
-      ? fetchCategorySources(category, controller.signal).then(sourceList => {
-        const start = (pageNumber - 1) * SOURCE_PAGE_SIZE
-        return {
-          items: sourceList.slice(start, start + SOURCE_PAGE_SIZE),
-          totalPages: Math.ceil(sourceList.length / SOURCE_PAGE_SIZE),
-        }
-      })
-      : fetchSourcePage(pageNumber, controller.signal)
-
-    request
+    fetchSourcePage(pageNumber, category, controller.signal)
       .then(page => {
         if (controller.signal.aborted) return
         const lastPage = Math.max(1, page.totalPages)
