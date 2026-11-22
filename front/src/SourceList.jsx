@@ -20,12 +20,15 @@ async function fetchSourcePage(pageNumber, sourceType, signal) {
   return payload.response
 }
 
-function SourceCard({ source, timeZone, pending, onEdit, onDelete }) {
+function SourceCard({ source, timeZone, pending, onDetail, onEdit, onDelete }) {
   return (
     <article className="career-card">
       <span className="career-card-type" data-type={source.sourceType}>{sourceTypeLabels[source.sourceType]}</span>
       <div className="career-card-title">
-        <h2>{source.name}</h2>
+        <h2>
+          <button className="career-card-detail" type="button" disabled={pending}
+            onClick={event => onDetail(source.sourceId, event.currentTarget)}>{source.name}</button>
+        </h2>
         {source.hasAttachments && (
           <span className="career-clip-indicator" role="img" aria-label="첨부 파일 있음">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -103,7 +106,7 @@ function SourcePagination({ pageNumber, totalPages, pending, onChange }) {
   )
 }
 
-export default function SourceList({ onRegister, onEdit, notify }) {
+export default function SourceList({ onRegister, onDetail, onEdit, notify }) {
   const timeZone = localStorage.getItem('catchup.timeZone')
   const [result, setResult] = useState(null)
   const [category, setCategory] = useState('')
@@ -228,7 +231,7 @@ export default function SourceList({ onRegister, onEdit, notify }) {
               {result.items.map(source => (
                 <li key={source.sourceId}>
                   <SourceCard source={source} timeZone={timeZone} pending={pending}
-                    onEdit={onEdit} onDelete={prepareDelete} />
+                    onDetail={onDetail} onEdit={onEdit} onDelete={prepareDelete} />
                 </li>
               ))}
             </ul>

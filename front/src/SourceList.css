@@ -621,3 +621,34 @@
   opacity: .65;
   cursor: default;
 }
+
+.career-card .career-card-detail {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.career-card .career-card-detail:hover {
+  text-decoration: underline;
+}
+
+.career-detail-fields {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+}
+
+.career-detail-fields dt {
+  color: #626262;
+  font-size: .875rem;
+}
+
+.career-detail-fields dd {
+  margin: .25rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
