@@ -86,9 +86,15 @@ public class SourceManagementServiceImpl implements SourceManagementService {
     }
 
     /**
-     * 소스를 잠그고 첨부와 소스를 함께 삭제한 뒤 커밋 후 원본 정리를 예약한다.
+     * 소스를 잠그고 첨부 메타데이터와 소스를 같은 트랜잭션에서 삭제한다.
+     *
+     * <p>완료한 업로드 예약은 유지하고 삭제 대상 소스와의 연결만 해제한다.
+     * DB 변경이 롤백되면 첨부 메타데이터와 원본을 유지한다. 커밋 후에는
+     * {@link SourceAttachmentCleanup#afterCommit}에서 제거한 첨부의 원본 정리를 요청한다.
+     * 원본 정리 실패는 확정된 DB 삭제에 영향을 주지 않는다.
      *
      * @param id 소스 식별자
+     * @throws ApiException 소스가 존재하지 않는 경우
      */
     @Override
     @Transactional
