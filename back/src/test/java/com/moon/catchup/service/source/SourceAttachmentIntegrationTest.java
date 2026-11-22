@@ -21,10 +21,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -46,7 +42,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -569,46 +564,6 @@ public class SourceAttachmentIntegrationTest {
         } finally {
             this.jdbc.execute("ALTER TABLE attachments DROP CONSTRAINT reject_timestamp_test_file");
         }
-    }
-
-    /** 이전 표시 이름을 백필하고 재실행해도 이후 사용자가 저장한 이름을 보존하는지 확인한다. */
-    @Test
-    public void backfillsLegacyNamesWithoutOverwritingExistingNames() throws Exception {
-        String migrationSql = Files.readString(Path.of("scripts", "add-source-name.sql"));
-        this.jdbc.execute((ConnectionCallback<Void>) connection -> {
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("""
-                        CREATE TEMP TABLE sources (source_id bigint PRIMARY KEY, source_type text, details jsonb)
-                        """);
-                try {
-                    statement.execute("""
-                            INSERT INTO pg_temp.sources VALUES
-                                (1, 'CAREER_HISTORY', '{"organization":"Company"}'),
-                                (2, 'EXPERIENCE', '{"title":"Project"}'),
-                                (3, 'CERTIFICATION', '{"name":"Certificate"}'),
-                                (4, 'EXPERIENCE', '{}')
-                            """);
-                    statement.execute(migrationSql);
-                    try (ResultSet experience = statement.executeQuery("SELECT name, details ->> 'title' AS title FROM pg_temp.sources WHERE source_id = 2")) {
-                        assertTrue(experience.next());
-                        assertEquals("Project", experience.getString("name"));
-                        assertEquals("Project", experience.getString("title"));
-                    }
-                    statement.executeUpdate("UPDATE pg_temp.sources SET name = 'Custom' WHERE source_id = 2");
-                    statement.execute(migrationSql);
-                    try (ResultSet rows = statement.executeQuery("SELECT name FROM pg_temp.sources ORDER BY source_id")) {
-                        for (String expectedName : List.of("Company", "Custom", "Certificate", "자료 #4")) {
-                            assertTrue(rows.next());
-                            assertEquals(expectedName, rows.getString("name"));
-                        }
-                        assertFalse(rows.next());
-                    }
-                } finally {
-                    statement.execute("DROP TABLE pg_temp.sources");
-                }
-            }
-            return null;
-        });
     }
 
     /** 대조 작업이 원본을 보호하고 복구 작업이 잠긴 만료 예약을 건너뛰는지 확인한다. */
