@@ -204,22 +204,21 @@ public class SourceServiceImpl implements SourceService {
         if (!removedKeys.isEmpty()) this.applicationEventPublisher.publishEvent(new SourceAttachmentCleanup.Removed(removedKeys));
     }
 
-    /**
-     * 검증한 페이지의 항목과 전체 건수를 같은 DB 스냅샷에서 읽는다.
-     *
-     * <p>JPA의 엔티티 속성 정렬을 사용한다. 요청 순서 뒤에 누락된 등록 시각·식별자 내림차순을
-     * 적용한다. 전체 범위를 벗어난 페이지는 요청 정보와 전체 건수를 유지하고 빈 항목을 반환한다.
-     * 현재 페이지의 첨부 유무는 같은 읽기 트랜잭션에서 일괄 조회한다.
-     *
-     * @param pageNumber 1부터 시작하는 페이지 번호
-     * @param pageSize 페이지당 항목 수
-     * @param orderBy 쉼표로 연결한 선택 정렬 조건
-     * @return 현재 페이지의 소스 요약과 전체 건수
-     * @throws ApiException 페이지 값이나 정렬 조건이 유효하지 않은 경우
-     */
+    /** {@inheritDoc} */
     @Override
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Page<SourceSummaryVo> list(int pageNumber, int pageSize, String orderBy) {
+        return list(pageNumber, pageSize, orderBy, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>현재 페이지의 첨부 유무는 같은 읽기 트랜잭션에서 일괄 조회한다.
+     */
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Page<SourceSummaryVo> list(int pageNumber, int pageSize, String orderBy, SourceType sourceType) {
         if (pageNumber < 1) {
             Map<String, String> fieldErrors = Map.of("page_number", "페이지 번호는 1 이상이어야 합니다.");
             throw new ApiException(ErrorCode.VALIDATION_FAILED, fieldErrors, HttpHeaders.EMPTY, null);
@@ -230,9 +229,12 @@ public class SourceServiceImpl implements SourceService {
         }
         PageRequest pageRequest = PageRequest.of(pageNumber - 1, pageSize, parseSort(orderBy));
         if (pageRequest.getOffset() > Integer.MAX_VALUE) {
-            return new PageImpl<>(List.of(), pageRequest, this.sourceRepository.count());
+            long totalElements = sourceType == null ? this.sourceRepository.count()
+                    : this.sourceRepository.countByType(sourceType);
+            return new PageImpl<>(List.of(), pageRequest, totalElements);
         }
-        Page<SourceEntity> sourcePage = this.sourceRepository.findAll(pageRequest);
+        Page<SourceEntity> sourcePage = sourceType == null ? this.sourceRepository.findAll(pageRequest)
+                : this.sourceRepository.findByType(sourceType, pageRequest);
         Set<Long> sourceIdsWithAttachments = sourcePage.isEmpty() ? Set.of()
                 : this.sourceAttachmentRepository.findSourceIdsWithAttachments(
                         sourcePage.getContent().stream().map(SourceEntity::getId).toList());

@@ -4,6 +4,9 @@ import java.util.Optional;
 
 import com.moon.catchup.domain.source.SourceDetailsVo;
 import com.moon.catchup.domain.source.SourceEntity;
+import com.moon.catchup.domain.source.SourceType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.NativeQuery;
@@ -11,6 +14,23 @@ import org.springframework.data.repository.query.Param;
 
 /** 소스의 저장, 조회, 행 잠금과 목록 표시 정보 조회를 담당한다. */
 public interface SourceRepository extends JpaRepository<SourceEntity, Long> {
+    /**
+     * 지정한 소스 유형으로 필터링한 후 페이지의 정렬과 범위를 적용한다.
+     *
+     * @param sourceType 조회할 소스 유형
+     * @param pageable 적용할 페이지와 정렬 조건
+     * @return 해당 유형의 페이지와 전체 건수
+     */
+    public Page<SourceEntity> findByType(SourceType sourceType, Pageable pageable);
+
+    /**
+     * 지정한 유형에 해당하는 소스의 전체 건수를 조회한다.
+     *
+     * @param sourceType 집계할 소스 유형
+     * @return 해당 유형의 소스 건수
+     */
+    public long countByType(SourceType sourceType);
+
     /**
      * 검증된 소스를 저장하고 DB에서 발급한 식별자를 돌려준다.
      *
