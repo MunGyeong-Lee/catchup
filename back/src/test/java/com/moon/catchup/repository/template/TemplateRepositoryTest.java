@@ -15,7 +15,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
-/** PostgreSQL에서 템플릿을 복원하고 스키마 스크립트의 재실행 안전성을 검증한다. */
+/** DB에서 템플릿을 복원하고 스키마 스크립트의 재실행 안전성을 검증한다. */
 @SpringBootTest
 @Transactional
 public class TemplateRepositoryTest {
