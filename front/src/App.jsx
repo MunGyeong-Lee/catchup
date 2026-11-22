@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import SourceAttachments from './SourceAttachments.jsx'
+import SourceDetail from './SourceDetail.jsx'
 import SourceList from './SourceList.jsx'
 import CareerLibraryHeader from './CareerLibraryHeader.jsx'
 import ToastBar from './ToastBar.jsx'
@@ -464,6 +465,8 @@ function SourceEditor({ sourceId, onList, onSaved, notify }) {
 export default function App() {
   const [showList, setShowList] = useState(true)
   const [editingId, setEditingId] = useState(null)
+  const [detailId, setDetailId] = useState(null)
+  const detailTrigger = useRef(null)
   const [toasts, setToasts] = useState([])
   const nextToastId = useRef(0)
 
@@ -477,6 +480,15 @@ export default function App() {
   const dismissToast = useCallback(id => {
     setToasts(current => current.filter(toast => toast.id !== id))
   }, [])
+
+  useEffect(() => {
+    if (detailId === null) detailTrigger.current?.focus()
+  }, [detailId])
+
+  function openDetail(sourceId, trigger) {
+    detailTrigger.current = trigger
+    setDetailId(sourceId)
+  }
 
   return (
     <>
@@ -495,7 +507,12 @@ export default function App() {
             onSaved={() => setEditingId(null)} notify={notify} />
         </div>
       ) : showList && (
-        <SourceList notify={notify} onEdit={setEditingId} onRegister={() => setShowList(false)} />
+        <div hidden={detailId !== null}>
+          <SourceList notify={notify} onDetail={openDetail} onEdit={setEditingId} onRegister={() => setShowList(false)} />
+        </div>
+      )}
+      {detailId !== null && (
+        <SourceDetail key={detailId} sourceId={detailId} sourceTypes={sourceTypes} onList={() => setDetailId(null)} />
       )}
     </>
   )

@@ -32,11 +32,16 @@ export default function SourceAttachments({ sourceId, notify }) {
       <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>첨부 파일 다시 불러오기</button>
     )
   }
-  if (!result.files.length) return <p>첨부한 파일이 없어요.</p>
+  return <SourceAttachmentList sourceId={sourceId} files={result.files} />
+}
+
+export function SourceAttachmentList({ sourceId, files }) {
+  const endpoint = `/api/sources/${sourceId}/attachments`
+  if (!files.length) return <p>첨부한 파일이 없어요.</p>
 
   return (
     <ul className="career-attachments">
-      {result.files.map(file => (
+      {files.map(file => (
         <li key={file.attachmentId}>
           <span className="career-attachment-name">{file.name}</span>
           <div className="career-attachment-links">
