@@ -13,6 +13,7 @@ import com.moon.catchup.domain.source.SourceType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -84,14 +85,85 @@ public interface SourceDocs {
     /**
      * 소스 상세와 첨부 목록 조회를 문서화한다.
      *
+     * <p>공통 상세 필드와 유형별 저장값은 공통 응답의 response 안에 함께 반환한다.
+     * 첨부 목록에는 공개 메타데이터만 포함하며 소스가 없으면 SOURCE_NOT_FOUND를 반환한다.
+     *
      * @param sourceId 소스 식별자
      * @return 요청 결과를 담은 공통 응답
      */
     @Operation(summary = "소스 상세 조회",
-            description = "공통 이름과 첨부 목록 및 유형별 상세 필드를 응답의 같은 수준에 전달합니다. createdAt 및 updatedAt은 UTC ISO 8601 문자열입니다. 자격증 이름은 certificateName으로 반환합니다.")
+            description = "response 안에 공통 이름, 첨부 목록, 유형별 상세 필드를 같은 수준으로 전달합니다. "
+                    + "createdAt 및 updatedAt은 UTC ISO 8601 문자열입니다. 자격증 이름은 certificateName으로 반환합니다. "
+                    + "첨부가 없으면 빈 배열을 반환합니다. 첨부 정보는 attachmentId, name, contentType, size로 구성됩니다.")
     @ApiResponse(responseCode = "200", description = "저장된 소스 입력과 첨부 목록",
-            content = @Content(schema = @Schema(implementation = SourceDetailEnvelope.class)))
-    @ApiResponse(responseCode = "404", description = "소스가 존재하지 않음")
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = SourceDetailEnvelope.class),
+                    examples = {
+                            @ExampleObject(name = "TARGET_COMPANY", summary = "첨부가 있는 지원회사", value = """
+                                    {
+                                      "error": null,
+                                      "error_message": null,
+                                      "response": {
+                                        "sourceId": 101,
+                                        "sourceType": "TARGET_COMPANY",
+                                        "name": "새봄 지원 자료",
+                                        "createdAt": "2026-11-20T01:00:00Z",
+                                        "updatedAt": "2026-11-21T01:00:00Z",
+                                        "companyName": "새봄",
+                                        "jobTitle": "백엔드 개발자",
+                                        "content": "채용 공고의 주요 요건을 정리했습니다.",
+                                        "idealCandidateProfile": "협업과 피드백을 중시하는 사람",
+                                        "jobDescription": "서비스 API를 개발하고 운영합니다.",
+                                        "attachments": [{
+                                          "attachmentId": "78e5b499-bd94-4ae7-a9a7-56f33b6e127d",
+                                          "name": "채용공고.pdf",
+                                          "contentType": "application/pdf",
+                                          "size": 2048
+                                        }]
+                                      }
+                                    }
+                                    """),
+                            @ExampleObject(name = "WRITING_STYLE", summary = "문체 및 어투", value = """
+                                    {
+                                      "error": null,
+                                      "error_message": null,
+                                      "response": {
+                                        "sourceId": 102,
+                                        "sourceType": "WRITING_STYLE",
+                                        "name": "자기소개서 문체",
+                                        "createdAt": "2026-11-20T02:00:00Z",
+                                        "updatedAt": "2026-11-20T02:00:00Z",
+                                        "content": "짧은 문장으로 행동과 결과를 설명합니다.",
+                                        "attachments": []
+                                      }
+                                    }
+                                    """),
+                            @ExampleObject(name = "OTHER_TEXT", summary = "기타 텍스트", value = """
+                                    {
+                                      "error": null,
+                                      "error_message": null,
+                                      "response": {
+                                        "sourceId": 103,
+                                        "sourceType": "OTHER_TEXT",
+                                        "name": "면접 참고 노트",
+                                        "createdAt": "2026-11-20T03:00:00Z",
+                                        "updatedAt": "2026-11-20T03:00:00Z",
+                                        "content": "프로젝트에서 맡은 역할과 성과를 요약했습니다.",
+                                        "attachments": []
+                                      }
+                                    }
+                                    """)
+                    }))
+    @ApiResponse(responseCode = "404", description = "소스가 존재하지 않음",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = SourceDetailNotFoundEnvelope.class),
+                    examples = @ExampleObject(name = "SOURCE_NOT_FOUND", value = """
+                            {
+                              "error": "SOURCE_NOT_FOUND",
+                              "error_message": "소스를 찾을 수 없어요.",
+                              "response": null
+                            }
+                            """)))
     public ResponseVo get(long sourceId);
 
     /**
@@ -150,9 +222,22 @@ public interface SourceDocs {
     /** OpenAPI에 표시할 소스 상세 조회의 응답 형식이다. */
     @Getter
     public static final class SourceDetailEnvelope {
+        @Schema(types = "null", requiredMode = Schema.RequiredMode.REQUIRED)
         private String error;
-        @Schema(name = "error_message")
+        @Schema(name = "error_message", types = "null", requiredMode = Schema.RequiredMode.REQUIRED)
         private String errorMessage;
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         private SourceResponse response;
+    }
+
+    /** OpenAPI에 표시할 소스 상세 조회의 공통 자료 없음 오류 형식이다. */
+    @Getter
+    public static final class SourceDetailNotFoundEnvelope {
+        @Schema(allowableValues = "SOURCE_NOT_FOUND", requiredMode = Schema.RequiredMode.REQUIRED)
+        private String error;
+        @Schema(name = "error_message", requiredMode = Schema.RequiredMode.REQUIRED)
+        private String errorMessage;
+        @Schema(types = "null", requiredMode = Schema.RequiredMode.REQUIRED)
+        private Object response;
     }
 }
