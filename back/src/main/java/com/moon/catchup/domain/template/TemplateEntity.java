@@ -3,6 +3,8 @@ package com.moon.catchup.domain.template;
 import com.moon.catchup.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -24,8 +26,9 @@ public class TemplateEntity extends BaseEntity {
     @Column(name = "template_id")
     private Long id;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false)
-    private String documentType;
+    private TemplateDocumentType documentType;
 
     @Column(name = "title", nullable = false)
     private String title;

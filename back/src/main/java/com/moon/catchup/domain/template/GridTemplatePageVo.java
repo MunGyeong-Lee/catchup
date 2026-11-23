@@ -9,9 +9,9 @@ import lombok.Getter;
 /** A4 용지의 방향과 그리드에 배치한 블록 목록을 담는다. */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public final class TemplatePageVo {
+public final class GridTemplatePageVo {
     private final TemplatePageOrientation orientation;
-    private final List<TemplateBlockVo> blocks;
+    private final List<GridTemplateBlockVo> blocks;
 
     /**
      * A4 페이지를 만들고 블록 순서를 보존한다.
@@ -20,9 +20,9 @@ public final class TemplatePageVo {
      * @param blockList 페이지에 배치한 블록 목록
      * @return 템플릿 페이지
      */
-    public static TemplatePageVo of(TemplatePageOrientation orientation, List<TemplateBlockVo> blockList) {
+    public static GridTemplatePageVo of(TemplatePageOrientation orientation, List<GridTemplateBlockVo> blockList) {
         TemplatePageOrientation pageOrientation = orientation == null ? TemplatePageOrientation.PORTRAIT : orientation;
-        return new TemplatePageVo(pageOrientation, List.copyOf(blockList));
+        return new GridTemplatePageVo(pageOrientation, List.copyOf(blockList));
     }
 
     /**
@@ -31,8 +31,8 @@ public final class TemplatePageVo {
      * @param orientation 새 용지 방향. 생략하면 세로
      * @return 새 방향을 적용한 페이지
      */
-    public TemplatePageVo withOrientation(TemplatePageOrientation orientation) {
+    public GridTemplatePageVo withOrientation(TemplatePageOrientation orientation) {
         TemplatePageOrientation pageOrientation = orientation == null ? TemplatePageOrientation.PORTRAIT : orientation;
-        return new TemplatePageVo(pageOrientation, this.blocks);
+        return new GridTemplatePageVo(pageOrientation, this.blocks);
     }
 }
