@@ -17,6 +17,16 @@ public final class ApiException extends RuntimeException {
         this(code, Map.of(), HttpHeaders.EMPTY, null);
     }
 
+    /**
+     * 항목별 검증 오류를 담은 업무 오류를 만든다.
+     *
+     * @param code 응답 상태와 오류 메시지를 결정하는 업무 오류 코드
+     * @param fieldErrors 입력 항목별 오류 메시지
+     */
+    public ApiException(ErrorCode code, Map<String, String> fieldErrors) {
+        this(code, fieldErrors, HttpHeaders.EMPTY, null);
+    }
+
     /** 서버 로그에서 확인할 원인을 보존해 업무 오류를 만든다. */
     public ApiException(ErrorCode code, Throwable cause) {
         this(code, Map.of(), HttpHeaders.EMPTY, cause);
