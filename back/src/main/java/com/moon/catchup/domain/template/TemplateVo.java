@@ -8,15 +8,15 @@ import lombok.Getter;
 /**
  * 등록 입력 또는 조회 결과의 템플릿 값을 담는다.
  *
- * <p>편집 구조는 페이지, 블록과 그리드 배치를 포함한 JSON 객체 문자열로 전달한다.
- * 블록은 템플릿 안에서 고유한 숫자 식별자를 가지며 배치가 바뀌어도 식별자를 유지한다.
+ * <p>편집 구조는 문서 유형에 대응하는 JSON 객체 문자열로 전달한다.
+ * 그리드 구조는 페이지와 블록 배치를, 문단 구조는 문항 페이지와 소제목 및 문단 자리를 담는다.
  * 지원하는 문서 유형과 편집 구조의 세부 규칙은 등록 서비스에서 검증한다.
  */
 @Getter
 @AllArgsConstructor
 public final class TemplateVo {
     private final Long templateId;
-    private final String documentType;
+    private final TemplateDocumentType documentType;
     private final String title;
     private final String structureJson;
     private final Instant createdAt;

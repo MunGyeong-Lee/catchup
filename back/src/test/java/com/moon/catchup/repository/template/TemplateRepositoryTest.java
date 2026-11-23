@@ -3,6 +3,7 @@ package com.moon.catchup.repository.template;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.moon.catchup.domain.template.TemplateEntity;
+import com.moon.catchup.domain.template.TemplateDocumentType;
 import com.moon.catchup.domain.template.TemplateVo;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -66,7 +67,7 @@ public class TemplateRepositoryTest {
     /** DB가 생성한 등록 정보와 페이지 순서, 숫자 블록 식별자, 그리드 배치를 복원한다. */
     @Test
     public void restoresStoredTemplate() {
-        TemplateVo input = new TemplateVo(null, "RESUME", "기본 이력서", STRUCTURE, null);
+        TemplateVo input = new TemplateVo(null, TemplateDocumentType.RESUME, "기본 이력서", STRUCTURE, null);
         TemplateEntity saved = this.templateRepository.saveAndFlush(input.convertToTemplateEntity());
         this.entityManager.clear();
 
@@ -76,6 +77,9 @@ public class TemplateRepositoryTest {
 
         assertThat(restored.getTemplateId()).isEqualTo(saved.getId());
         assertThat(restored.getDocumentType()).isEqualTo(input.getDocumentType());
+        assertThat(this.jdbcTemplate.queryForObject(
+                "SELECT document_type FROM templates WHERE template_id = ?", String.class, saved.getId()))
+                .isEqualTo("RESUME");
         assertThat(restored.getTitle()).isEqualTo(input.getTitle());
         assertThat(restored.getCreatedAt()).isNotNull();
         assertThat(jsonMapper.readTree(restored.getStructureJson())).isEqualTo(jsonMapper.readTree(STRUCTURE));
@@ -89,7 +93,7 @@ public class TemplateRepositoryTest {
                 VALUES ('OTHER_TEXT', '기존 소스', '{"content":"기존 본문"}')
                 RETURNING source_id
                 """, Long.class);
-        TemplateVo input = new TemplateVo(null, "PORTFOLIO", "기존 템플릿", STRUCTURE, null);
+        TemplateVo input = new TemplateVo(null, TemplateDocumentType.PORTFOLIO, "기존 템플릿", STRUCTURE, null);
         Long templateId = this.templateRepository.saveAndFlush(input.convertToTemplateEntity()).getId();
 
         this.jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {

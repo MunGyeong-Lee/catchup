@@ -7,7 +7,7 @@ import lombok.Getter;
 /** A4 페이지의 12열 그리드에서 블록의 시작 위치와 열 너비를 담는다. */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public final class TemplateBlockPlacementVo {
+public final class GridTemplateBlockPlacementVo {
     private final int row;
     private final int column;
     private final int columnSpan;
@@ -20,7 +20,7 @@ public final class TemplateBlockPlacementVo {
      * @param columnSpan 차지하는 열 수
      * @return 그리드 배치
      */
-    public static TemplateBlockPlacementVo of(int row, int column, int columnSpan) {
-        return new TemplateBlockPlacementVo(row, column, columnSpan);
+    public static GridTemplateBlockPlacementVo of(int row, int column, int columnSpan) {
+        return new GridTemplateBlockPlacementVo(row, column, columnSpan);
     }
 }
