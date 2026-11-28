@@ -106,11 +106,12 @@ function SourcePagination({ pageNumber, totalPages, pending, onChange }) {
   )
 }
 
-export default function SourceList({ onRegister, onDetail, onEdit, notify }) {
+export default function SourceList({ onRegister, onDetail, onEdit, onCreateTemplate, notify }) {
   const timeZone = localStorage.getItem('catchup.timeZone')
   const [result, setResult] = useState(null)
   const [category, setCategory] = useState('')
   const [categoriesOpen, setCategoriesOpen] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
   const [pageNumber, setPageNumber] = useState(1)
   const [retry, setRetry] = useState(0)
   const [confirming, setConfirming] = useState(null)
@@ -187,7 +188,11 @@ export default function SourceList({ onRegister, onDetail, onEdit, notify }) {
       <div className="career-library-layout">
         <nav className="career-categories" aria-label="소스 카테고리">
           <button className="career-category-toggle" type="button" aria-expanded={categoriesOpen}
-            aria-controls="career-category-panel" onClick={() => setCategoriesOpen(open => !open)}>
+            aria-current={showTemplates ? undefined : 'page'} aria-controls="career-category-panel"
+            onClick={() => {
+              setShowTemplates(false)
+              setCategoriesOpen(open => !open)
+            }}>
             자료보관
           </button>
           <div className="career-category-panel" id="career-category-panel" inert={!categoriesOpen}>
@@ -206,40 +211,50 @@ export default function SourceList({ onRegister, onDetail, onEdit, notify }) {
               </div>
             </div>
           </div>
+          <button className="career-category-toggle" type="button" aria-current={showTemplates ? 'page' : undefined}
+            onClick={() => {
+              setShowTemplates(true)
+              setCategoriesOpen(false)
+            }}>
+            템플릿
+          </button>
         </nav>
         <main className="career-library-content">
           <div className="career-library-heading">
-            <h1>자료보관</h1>
-            <button className="career-register-button" type="button" disabled={pending} onClick={onRegister}>
-              소스 등록
+            <h1>{showTemplates ? '템플릿' : '자료보관'}</h1>
+            <button className="career-register-button" type="button" disabled={!showTemplates && pending}
+              onClick={showTemplates ? onCreateTemplate : onRegister}>
+              {showTemplates ? '템플릿 생성' : '소스 등록'}
             </button>
           </div>
-          {confirming && <DeleteConfirmation source={confirming} deleting={deleting}
-            onCancel={() => setConfirming(null)} onDelete={deleteSource} />}
-          {!result && <p role="status">소스를 불러오는 중이에요.</p>}
-          {result?.failed && (
-            <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>목록 다시 불러오기</button>
-          )}
-          {result?.items?.length === 0 && (
-            <div className="career-empty">
-              <h2>{category ? `등록된 ${sourceTypeLabels[category]} 소스가 없어요.` : '등록된 소스가 없어요.'}</h2>
-              {!category && <p>이력, 경험, 자격증을 등록해 커리어 기록을 모아 보세요.</p>}
-            </div>
-          )}
-          {result?.items?.length > 0 && (
-            <ul className="career-card-grid" aria-label="소스 목록">
-              {result.items.map(source => (
-                <li key={source.sourceId}>
-                  <SourceCard source={source} timeZone={timeZone} pending={pending}
-                    onDetail={onDetail} onEdit={onEdit} onDelete={prepareDelete} />
-                </li>
-              ))}
-            </ul>
-          )}
-          {result?.totalPages > 1 && (
-            <SourcePagination pageNumber={pageNumber} totalPages={result.totalPages}
-              pending={pending} onChange={changePage} />
-          )}
+          {!showTemplates && <>
+            {confirming && <DeleteConfirmation source={confirming} deleting={deleting}
+              onCancel={() => setConfirming(null)} onDelete={deleteSource} />}
+            {!result && <p role="status">소스를 불러오는 중이에요.</p>}
+            {result?.failed && (
+              <button type="button" onClick={() => { setResult(null); setRetry(value => value + 1) }}>목록 다시 불러오기</button>
+            )}
+            {result?.items?.length === 0 && (
+              <div className="career-empty">
+                <h2>{category ? `등록된 ${sourceTypeLabels[category]} 소스가 없어요.` : '등록된 소스가 없어요.'}</h2>
+                {!category && <p>이력, 경험, 자격증을 등록해 커리어 기록을 모아 보세요.</p>}
+              </div>
+            )}
+            {result?.items?.length > 0 && (
+              <ul className="career-card-grid" aria-label="소스 목록">
+                {result.items.map(source => (
+                  <li key={source.sourceId}>
+                    <SourceCard source={source} timeZone={timeZone} pending={pending}
+                      onDetail={onDetail} onEdit={onEdit} onDelete={prepareDelete} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {result?.totalPages > 1 && (
+              <SourcePagination pageNumber={pageNumber} totalPages={result.totalPages}
+                pending={pending} onChange={changePage} />
+            )}
+          </>}
         </main>
       </div>
     </div>

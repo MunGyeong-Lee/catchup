@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import SourceAttachments from './SourceAttachments.jsx'
 import SourceDetail from './SourceDetail.jsx'
 import SourceList from './SourceList.jsx'
+import TemplateEditor from './TemplateEditor.jsx'
 import CareerLibraryHeader from './CareerLibraryHeader.jsx'
 import ToastBar from './ToastBar.jsx'
 import { sourceTypeLabels } from './sourceTypeLabels.js'
@@ -466,6 +467,7 @@ export default function App() {
   const [showList, setShowList] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [detailId, setDetailId] = useState(null)
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false)
   const detailTrigger = useRef(null)
   const [toasts, setToasts] = useState([])
   const nextToastId = useRef(0)
@@ -507,13 +509,15 @@ export default function App() {
             onSaved={() => setEditingId(null)} notify={notify} />
         </div>
       ) : showList && (
-        <div hidden={detailId !== null}>
-          <SourceList notify={notify} onDetail={openDetail} onEdit={setEditingId} onRegister={() => setShowList(false)} />
+        <div hidden={detailId !== null || showTemplateEditor}>
+          <SourceList notify={notify} onDetail={openDetail} onEdit={setEditingId}
+            onRegister={() => setShowList(false)} onCreateTemplate={() => setShowTemplateEditor(true)} />
         </div>
       )}
       {detailId !== null && (
         <SourceDetail key={detailId} sourceId={detailId} sourceTypes={sourceTypes} onList={() => setDetailId(null)} />
       )}
+      {showTemplateEditor && <TemplateEditor onBack={() => setShowTemplateEditor(false)} notify={notify} />}
     </>
   )
 }
