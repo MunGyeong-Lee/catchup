@@ -74,9 +74,10 @@ public interface SourceDocs {
      * @return 요청 결과를 담은 공통 응답
      */
     @Operation(summary = "소스 등록",
-            description = "JSON 본문에서 공통 이름과 유형별 입력을 최상위로 받습니다. 자격증 이름은 certificateName입니다.")
+            description = "JSON 본문에서 공통 이름과 유형별 입력을 최상위로 받습니다. 자격증 이름은 certificateName입니다. "
+                    + "연월과 날짜는 ISO 문자열 또는 정수 배열 [연, 월]과 [연, 월, 일]을 받습니다. 빈 배열은 입력 없음으로 처리합니다.")
     @ApiResponse(responseCode = "201", description = "생성한 소스 식별자")
-    @ApiResponse(responseCode = "400", description = "요청 형식 또는 소스 입력 오류")
+    @ApiResponse(responseCode = "400", description = "미정의 JSON 키나 본문 형식 오류는 INVALID_REQUEST, 소스 입력 오류는 VALIDATION_FAILED를 반환합니다.")
     public ResponseVo register(SourceRegisterRequest req);
 
     /**
@@ -88,9 +89,10 @@ public interface SourceDocs {
      * @return 요청 결과를 담은 공통 응답
      */
     @Operation(summary = "첨부 파일이 있는 소스 등록",
-            description = "source JSON 파트는 일반 등록과 동일한 최상위 입력을 사용합니다. requestId와 files도 전송합니다. 재시도 시 같은 requestId를 사용합니다.")
+            description = "source JSON 파트는 일반 등록과 동일한 최상위 입력과 날짜 변환 규칙을 사용합니다. "
+                    + "requestId와 files도 전송합니다. 재시도 시 같은 requestId를 사용합니다.")
     @ApiResponse(responseCode = "201", description = "생성했거나 재시도로 확인한 소스 식별자")
-    @ApiResponse(responseCode = "400", description = "요청 형식, 소스 입력 또는 첨부 파일 오류")
+    @ApiResponse(responseCode = "400", description = "source 파트의 미정의 JSON 키나 형식 오류는 INVALID_REQUEST, 소스 입력 또는 첨부 검증 오류는 VALIDATION_FAILED를 반환합니다.")
     @ApiResponse(responseCode = "404", description = "재시도할 등록의 소스가 삭제됨")
     @ApiResponse(responseCode = "413", description = "첨부 파일 크기 제한 초과")
     @ApiResponse(responseCode = "503", description = "첨부 원본 저장소 오류")
@@ -194,7 +196,7 @@ public interface SourceDocs {
                     schema = @Schema(implementation = SourceUpdateBody.class))))
     @ApiResponse(responseCode = "200", description = "수정한 소스 식별자")
     @ApiResponse(responseCode = "400", description = "요청 형식, 입력 또는 제거 대상 첨부 오류. "
-            + "입력 검증 오류는 VALIDATION_FAILED와 field_errors를 반환합니다.")
+            + "DTO에 정의되지 않은 JSON 키는 INVALID_REQUEST, 입력 검증 오류는 VALIDATION_FAILED와 field_errors를 반환합니다.")
     @ApiResponse(responseCode = "404", description = "소스가 존재하지 않음")
     public ResponseVo update(long sourceId,
                              @Parameter(schema = @Schema(implementation = SourceUpdateBody.class)) SourceUpdateRequest req);
@@ -218,7 +220,7 @@ public interface SourceDocs {
             }))
     @ApiResponse(responseCode = "200", description = "수정한 소스 식별자")
     @ApiResponse(responseCode = "400", description = "요청 형식, 소스 입력 또는 첨부 파일 오류. "
-            + "입력 검증 오류는 VALIDATION_FAILED와 field_errors를 반환합니다.")
+            + "DTO에 정의되지 않은 JSON 키는 INVALID_REQUEST, 입력 검증 오류는 VALIDATION_FAILED와 field_errors를 반환합니다.")
     @ApiResponse(responseCode = "404", description = "소스가 존재하지 않음")
     @ApiResponse(responseCode = "413", description = "첨부 파일 크기 제한 초과")
     @ApiResponse(responseCode = "503", description = "첨부 원본 저장소 오류")

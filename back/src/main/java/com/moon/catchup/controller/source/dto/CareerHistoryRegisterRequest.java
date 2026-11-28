@@ -3,9 +3,9 @@ package com.moon.catchup.controller.source.dto;
 import java.time.YearMonth;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.moon.catchup.domain.source.SourceDateFormat;
+import com.fasterxml.jackson.annotation.OptBoolean;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
@@ -24,6 +24,8 @@ public final class CareerHistoryRegisterRequest extends SourceRegisterRequest {
     private Object historyType;
 
     /** 시작 연월 (YYYY-MM, 시간대 없음) */
+    @JsonProperty
+    @JsonFormat(pattern = "uuuu-MM", lenient = OptBoolean.FALSE)
     @Schema(description = "시작 연월 (YYYY-MM, 시간대 없음)", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private YearMonth startMonth;
 
@@ -33,6 +35,8 @@ public final class CareerHistoryRegisterRequest extends SourceRegisterRequest {
     private Object role;
 
     /** 종료 연월 (YYYY-MM, 시간대 없음) */
+    @JsonProperty
+    @JsonFormat(pattern = "uuuu-MM", lenient = OptBoolean.FALSE)
     @Schema(description = "종료 연월 (YYYY-MM, 시간대 없음)", type = "string")
     private YearMonth endMonth;
 
@@ -45,26 +49,6 @@ public final class CareerHistoryRegisterRequest extends SourceRegisterRequest {
     @JsonProperty
     @Schema(description = "상세 설명", type = "string")
     private Object description;
-
-    /**
-     * 등록 요청의 startMonth 필드를 변환한다.
-     *
-     * @param value 이 필드에 들어온 원래 JSON 값
-     */
-    @JsonSetter("startMonth")
-    private void bindStartMonth(Object value) {
-        this.startMonth = bindDate("startMonth", value, SourceDateFormat::parseMonth);
-    }
-
-    /**
-     * 등록 요청의 endMonth 필드를 변환한다.
-     *
-     * @param value 이 필드에 들어온 원래 JSON 값
-     */
-    @JsonSetter("endMonth")
-    private void bindEndMonth(Object value) {
-        this.endMonth = bindDate("endMonth", value, SourceDateFormat::parseMonth);
-    }
 
     /**
      * 이력 등록 필드를 기존 상세 저장 키에 연결한다.

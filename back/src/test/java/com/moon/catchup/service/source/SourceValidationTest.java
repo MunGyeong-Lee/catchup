@@ -74,7 +74,7 @@ public class SourceValidationTest {
                         "endMonth", "시작 연월 또는 취득일과 같거나 이후여야 합니다."));
     }
 
-    /** 바인딩한 등록 요청에서 미지원 유형, 허용되지 않은 필드, 누락된 자격증 이름을 구분한다. */
+    /** 바인딩한 등록 요청에서 유형, 필수값과 날짜 오류를 순서대로 검증한다. */
     @ParameterizedTest
     @MethodSource("invalidRegistrationRequests")
     public void rejectsInvalidTypedRegistration(String body, String field, String message) throws Exception {
@@ -96,29 +96,14 @@ public class SourceValidationTest {
     private static Stream<Arguments> invalidRegistrationRequests() {
         return Stream.of(
                 Arguments.of("""
-                        {"sourceType":"UNKNOWN","title":42}
+                        {"sourceType":"UNKNOWN","name":"소스"}
                         """, "sourceType", "소스 유형을 선택해 주세요."),
                 Arguments.of("""
-                        {"name":"소스","certificateName":"자격증"}
+                        {"name":"소스"}
                         """, "sourceType", "소스 유형을 선택해 주세요."),
-                Arguments.of("""
-                        {"sourceType":"EXPERIENCE","name":"소스","certificateName":"자격증","title":false}
-                        """, "details", "선택한 소스 유형에 해당하는 항목만 입력해 주세요."),
                 Arguments.of("""
                         {"sourceType":"CERTIFICATION","name":"소스","issuedOn":"2025-06-13"}
                         """, "certificateName", "필수 입력 항목입니다."),
-                Arguments.of("""
-                        {"sourceType":"CERTIFICATION","name":"소스","certificateName":"자격증",
-                         "issuedOn":"2026-02-29","expiresOn":"2025-01-01"}
-                        """, "issuedOn", "날짜 형식을 확인해 주세요."),
-                Arguments.of("""
-                        {"sourceType":"CERTIFICATION","name":"소스","certificateName":"자격증",
-                         "issuedOn":"2026-02-29","expiresOn":2026}
-                        """, "expiresOn", "입력 형식을 확인해 주세요."),
-                Arguments.of("""
-                        {"expiresOn":2026,"issuedOn":"2026-02-29","certificateName":"자격증",
-                         "name":"소스","sourceType":"CERTIFICATION"}
-                        """, "expiresOn", "입력 형식을 확인해 주세요."),
                 Arguments.of("""
                         {"sourceType":"CERTIFICATION","name":"소스","certificateName":"자격증",
                          "issuedOn":"2026-01-02","expiresOn":"2026-01-01"}
@@ -193,10 +178,10 @@ public class SourceValidationTest {
     @ParameterizedTest
     @ValueSource(strings = {
             """
-            {"sourceType":"EXPERIENCE","name":"소스 이름","title":7,"contribution":false,"startMonth":"invalid"}
+            {"sourceType":"EXPERIENCE","name":"소스 이름","title":7,"contribution":false,"startMonth":"2026-01"}
             """,
             """
-            {"startMonth":"invalid","contribution":false,"title":7,"sourceType":"EXPERIENCE","name":"소스 이름"}
+            {"startMonth":"2026-01","contribution":false,"title":7,"sourceType":"EXPERIENCE","name":"소스 이름"}
             """
     })
     public void returnsSameHttpErrorForReorderedFields(String requestBody) throws Exception {
