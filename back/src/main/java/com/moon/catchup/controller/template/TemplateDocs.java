@@ -24,6 +24,8 @@ public interface TemplateDocs {
     @Operation(summary = "템플릿 등록",
             description = "이력서, 포트폴리오, 경력기술서는 그리드형이고 자기소개서는 문단형입니다. "
                     + "그리드형은 12열이며 행과 열은 1부터 시작합니다. 방향을 생략하면 세로이며 rowSpan을 생략하면 한 행을 차지합니다. "
+                    + "편집 구조는 Jackson 기본 타입 변환을 적용합니다. 예를 들어 정수 필드의 소수 부분을 제거하고, "
+                    + "숫자로 보낸 블록 제목은 문자열로 저장합니다. 방향과 블록 유형은 문자열 코드를 사용합니다. "
                     + "문단형은 한 페이지에 한 문항을 두고 문단 번호를 각 문항에서 1부터 연속으로 보냅니다.",
             requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = TemplateCreateRequest.class),
