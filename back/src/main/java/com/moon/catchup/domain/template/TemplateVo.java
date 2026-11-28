@@ -2,7 +2,6 @@ package com.moon.catchup.domain.template;
 
 import java.time.Instant;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -13,13 +12,39 @@ import lombok.Getter;
  * 지원하는 문서 유형과 편집 구조의 세부 규칙은 등록 서비스에서 검증한다.
  */
 @Getter
-@AllArgsConstructor
 public final class TemplateVo {
     private final Long templateId;
     private final TemplateDocumentType documentType;
     private final String title;
     private final String structureJson;
     private final Instant createdAt;
+
+    /**
+     * DB에서 식별자와 등록 시각을 받을 템플릿의 입력값을 초기화한다.
+     *
+     * @param documentType 문서 유형
+     * @param title 템플릿 제목
+     * @param structureJson 편집 구조 JSON
+     */
+    private TemplateVo(TemplateDocumentType documentType, String title, String structureJson) {
+        this.templateId = null;
+        this.documentType = documentType;
+        this.title = title;
+        this.structureJson = structureJson;
+        this.createdAt = null;
+    }
+
+    /**
+     * 검증된 입력으로 등록용 템플릿 값을 만든다.
+     *
+     * @param documentType 문서 유형
+     * @param title 템플릿 제목
+     * @param structureJson 편집 구조 JSON
+     * @return 등록용 템플릿 값
+     */
+    public static TemplateVo of(TemplateDocumentType documentType, String title, String structureJson) {
+        return new TemplateVo(documentType, title, structureJson);
+    }
 
     /**
      * 조회한 엔티티에서 템플릿의 저장값과 메타데이터를 초기화한다.

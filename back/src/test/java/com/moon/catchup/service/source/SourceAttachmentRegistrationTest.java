@@ -49,7 +49,7 @@ public class SourceAttachmentRegistrationTest {
                 SourceDetailsVo.fromValidated(SourceType.EXPERIENCE, "소스 제목",
                         Map.of("title", "example", "contribution", "example")));
         when(repository.lockAttempt(any(UUID.class), eq(false)))
-                .thenReturn(Optional.of(new UploadAttemptVo(List.of("test-key"), null)));
+                .thenReturn(Optional.of(UploadAttemptVo.of(List.of("test-key"), null)));
         SourceAttachmentRegistrationServiceImpl service = new SourceAttachmentRegistrationServiceImpl(repository,
                 transactionalOperations(repository, sources, storage, transactions), sources,
                 new SourceAttachmentValidator());
@@ -76,8 +76,8 @@ public class SourceAttachmentRegistrationTest {
                         Map.of("title", "example", "contribution", "example")));
         when(sources.insert(any(SourceDetailsVo.class))).thenReturn(completed);
         when(repository.lockAttempt(any(UUID.class), eq(false)))
-                .thenReturn(Optional.of(new UploadAttemptVo(List.of("test-key"), null)))
-                .thenReturn(Optional.of(new UploadAttemptVo(List.of("test-key"), completed)));
+                .thenReturn(Optional.of(UploadAttemptVo.of(List.of("test-key"), null)))
+                .thenReturn(Optional.of(UploadAttemptVo.of(List.of("test-key"), completed)));
         SourceAttachmentRegistrationServiceImpl service = new SourceAttachmentRegistrationServiceImpl(repository,
                 transactionalOperations(repository, sources, storage, transactions), sources,
                 new SourceAttachmentValidator());

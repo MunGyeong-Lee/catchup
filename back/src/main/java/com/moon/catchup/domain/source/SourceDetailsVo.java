@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
@@ -19,11 +17,39 @@ import lombok.Getter;
  */
 @Getter
 @EqualsAndHashCode
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public final class SourceDetailsVo {
     private final SourceType type;
     private final String name;
     private final Map<String, Object> fields;
+
+    /**
+     * 저장된 상세 필드의 연월과 날짜를 변환해 초기화한다.
+     *
+     * @param source DB에서 조회한 소스
+     */
+    private SourceDetailsVo(SourceEntity source) {
+        Map<String, Object> storedFields = new HashMap<>(source.getDetails());
+        storedFields.computeIfPresent("startMonth", (field, value) -> YearMonth.parse((String) value));
+        storedFields.computeIfPresent("endMonth", (field, value) -> YearMonth.parse((String) value));
+        storedFields.computeIfPresent("issuedOn", (field, value) -> LocalDate.parse((String) value));
+        storedFields.computeIfPresent("expiresOn", (field, value) -> LocalDate.parse((String) value));
+        this.type = Objects.requireNonNull(source.getType());
+        this.name = Objects.requireNonNull(source.getName());
+        this.fields = Map.copyOf(storedFields);
+    }
+
+    /**
+     * 서비스에서 검증한 소스 입력을 불변 값으로 초기화한다.
+     *
+     * @param type 소스 유형
+     * @param name 소스 이름
+     * @param fields 검증한 상세 필드
+     */
+    private SourceDetailsVo(SourceType type, String name, Map<String, Object> fields) {
+        this.type = Objects.requireNonNull(type);
+        this.name = Objects.requireNonNull(name);
+        this.fields = Map.copyOf(fields);
+    }
 
     /**
      * 검증된 입력으로 DB에서 식별자를 받을 새 소스 엔티티를 만든다.
@@ -41,12 +67,7 @@ public final class SourceDetailsVo {
      * @return 검증한 소스 상세 값 객체
      */
     public static SourceDetailsVo from(SourceEntity source) {
-        Map<String, Object> fields = new HashMap<>(source.getDetails());
-        fields.computeIfPresent("startMonth", (field, value) -> YearMonth.parse((String) value));
-        fields.computeIfPresent("endMonth", (field, value) -> YearMonth.parse((String) value));
-        fields.computeIfPresent("issuedOn", (field, value) -> LocalDate.parse((String) value));
-        fields.computeIfPresent("expiresOn", (field, value) -> LocalDate.parse((String) value));
-        return fromValidated(source.getType(), source.getName(), fields);
+        return new SourceDetailsVo(source);
     }
 
     /**
@@ -58,7 +79,7 @@ public final class SourceDetailsVo {
      * @return 검증한 소스 상세 값 객체
      */
     public static SourceDetailsVo fromValidated(SourceType type, String name, Map<String, Object> fields) {
-        return new SourceDetailsVo(Objects.requireNonNull(type), Objects.requireNonNull(name), Map.copyOf(fields));
+        return new SourceDetailsVo(type, name, fields);
     }
 
     /**

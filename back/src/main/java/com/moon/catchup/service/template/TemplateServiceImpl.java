@@ -143,7 +143,7 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     private long save(TemplateDocumentType documentType, String title, String structureJson) {
-        TemplateVo template = new TemplateVo(null, documentType, title, structureJson, null);
+        TemplateVo template = TemplateVo.of(documentType, title, structureJson);
         return this.templateRepository.save(template.convertToTemplateEntity()).getId();
     }
 }

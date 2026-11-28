@@ -72,7 +72,7 @@ public interface SourceAttachmentRepository
      */
     public default Optional<UploadAttemptVo> lockAttempt(UUID requestId, boolean skipActive) {
         Optional<AttemptRow> attempt = skipActive ? findUnlockedAttempt(requestId) : findAttemptForUpdate(requestId);
-        return attempt.map(row -> new UploadAttemptVo(
+        return attempt.map(row -> UploadAttemptVo.of(
                 row.getObjectKeys().lines().toList(), row.getSourceId(), row.getTargetSourceId(), row.isCompleted()));
     }
 
