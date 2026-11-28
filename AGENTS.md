@@ -46,12 +46,13 @@
 - `com.moon.catchup` 하위에서 백엔드 코드는 계층을 먼저 나누고, 각 계층 아래에 기능별 패키지를 둔다. 소스 관리의 컨트롤러와 OpenAPI 문서 인터페이스는 `controller.source`, 요청·응답 DTO는 `controller.source.dto`에 둔다. 서비스는 `service.source`, 저장소는 `repository.source`, 엔티티·값 객체·내부 조회 모델은 `domain.source`, 외부 파일 저장 연동은 `storage.source`에 둔다. 공통 응답과 예외 처리는 `common`에 둔다. 테스트는 대응하는 운영 코드 패키지에 둔다.
 - 계층 간에는 컨트롤러 → 서비스 → 저장소 방향으로 호출한다. 컨트롤러는 요청과 응답을 처리하고, 서비스는 업무 규칙과 트랜잭션 흐름을 담당하며, 저장소는 SQL과 데이터베이스 접근을 담당한다.
 - 요청과 응답은 데이터 전송 객체(예: `SourceRegisterRequest`, `SourceRegisterResponse`)로 표현한다. 데이터 전송 객체는 컨트롤러에 중첩하지 않고 별도 Java 파일에 선언한다. 컨트롤러에서 데이터 전송 객체를 내부 객체로 연결한다. 서비스의 업무 처리는 도메인 객체를 사용한다.
-- 데이터 전송 객체와 도메인 객체는 일반 Java 클래스로 선언하고, 접근자는 Lombok의 `@Getter`로 생성한다. 단순 초기화에는 `@AllArgsConstructor`나 `@RequiredArgsConstructor` 중 클래스의 역할에 맞는 어노테이션을 사용한다. 검증이나 방어적 복사가 필요한 VO에 `@AllArgsConstructor`를 적용할 때는 생성자를 `AccessLevel.PRIVATE`로 제한하고, 정적 팩터리에서 검증과 복사를 마친 뒤 호출한다.
+- 데이터 전송 객체와 도메인 객체는 일반 Java 클래스로 선언하고, 접근자는 Lombok의 `@Getter`로 생성한다. DTO 등 단순 초기화가 필요한 클래스에는 역할에 맞게 `@AllArgsConstructor`나 `@RequiredArgsConstructor`를 사용한다. VO의 생성 방식은 아래 규칙을 따른다.
 - 기간처럼 값 자체에 의미와 제약이 있는 개념에는 불변 값 객체를 사용한다. 값 객체는 생성할 때 공통 제약을 검증한다.
 - 컨트롤러가 호출하는 서비스는 인터페이스와 `Impl` 구현체로 분리한다. 첨부 원본 저장처럼 교체 가능한 외부 연동도 인터페이스로 정의한다. 내부 트랜잭션 실행 빈은 별도 구현 계약이 있을 때 인터페이스를 둔다.
 - 영속 모델 클래스명은 `SourceEntity`처럼 `Entity`로 끝낸다. 값 객체와 응답 변환에 사용하는 내부 조회 모델은 각각 `SourceDetailsVo`, `SourceSummaryVo`처럼 `Vo`로 끝낸다. 엔티티와 VO는 `domain` 패키지의 별도 파일에 선언한다.
 - 조회 응답은 내부 VO를 응답 DTO로 변환해 만든다. 조회용 VO에는 응답에 필요한 필드값이나 다른 VO를 담는다. 예를 들어 `StoredAttachmentVo`는 첨부파일 엔티티의 메타데이터 필드와 S3 객체 키를 직접 보관한다.
-- 엔티티 → VO 변환은 대상 VO의 `from(entity, ...)`에 둔다. VO → 엔티티 변환이 실제 등록 또는 조회 흐름에 필요하면 원본 VO에 `convertTo{Entity}()`를 선언하고 해당 흐름에서 호출한다. VO → 응답 DTO 변환은 응답 DTO의 `from(vo)`를 사용할 수 있다.
+- VO는 명시적인 `private` 생성자를 직접 작성하고, 생성자에서 `this.필드 = 값;`으로 각 필드를 초기화한다. 값을 조합해 생성할 때는 공개 정적 팩터리 `of(...)`를, 엔티티를 변환할 때는 공개 정적 팩터리 `from(entity, ...)`를 사용한다. `of(...)`는 필요한 입력 검증을 마친 값들을 생성자에 전달한다. `from(...)`은 엔티티와 필요한 추가 인자를 그대로 생성자에 전달하고, 생성자가 엔티티 값을 읽어 필요한 형식 변환을 적용한다.
+- VO → 엔티티 변환이 실제 등록 또는 조회 흐름에 필요하면 원본 VO에 `convertTo{Entity}()`를 선언하고 해당 흐름에서 호출한다. VO → 응답 DTO 변환은 응답 DTO의 `from(vo)`를 사용할 수 있다.
 - 저장소는 Spring Data JPA를 사용한다. 고정된 사용자 정의 쿼리는 저장소 인터페이스에 `@Query`로 선언하고, DB 전용 SQL에는 `@NativeQuery` 또는 `@Query(nativeQuery = true)`를 사용한다. 여러 조회 컬럼은 프로젝션 또는 조회용 VO로 매핑한다. 업무 규칙의 검증은 서비스와 값 객체가 맡는다.
 - 클래스 JavaDoc의 첫 문장은 담당 역할을 설명한다. 공통 업무 규칙이나 설계 이유는 `<p>` 문단에 기록한다. 메서드와 생성자 JavaDoc의 첫 문장은 동작을 설명하고, 호출자가 알아야 하는 입력 조건·검증 순서·정렬·트랜잭션·실패 동작을 본문에 기록한다. 중복되는 계약은 `{@link ...}`로 연결하고 여러 객체에 걸친 흐름은 필요한 경우 `package-info.java`에 기록한다.
 - 백엔드 코드를 수정한 뒤 `back/`에서 `./gradlew test`를 실행한다. 데이터베이스 연동 테스트는 `localhost:5432/catchup`에 연결하고, 기존 `public` 데이터에 영향을 주지 않도록 별도의 검증용 스키마를 사용한다.
@@ -73,7 +74,7 @@
 | 계층 | 표준 애너테이션 | 적용 방식 |
 | --- | --- | --- |
 | 영속 객체(Entity) | `@Entity`, `@Table`, `@Getter`, `@SuperBuilder`, `@NoArgsConstructor` | JPA 모델에는 테이블 이름을 명시하고 보호된 기본 생성자를 둔다. 공통 영속 필드는 `BaseEntity`로 관리하며, 상속 계층에서 빌더를 만들 때 `@SuperBuilder`를 사용한다. |
-| 값 객체(VO) | `@Getter`, `@AllArgsConstructor` | 필드를 불변으로 유지한다. 검증이 필요한 경우 private 생성자와 검증 팩터리를 사용한다. |
+| 값 객체(VO) | `@Getter` | 필드를 불변으로 유지한다. `of(...)`와 `from(...)`은 직접 작성한 `private` 생성자를 호출한다. |
 | 요청 데이터 전송 객체(Request DTO) | `@Getter`, `@Schema` | 클래스와 필드의 의미를 문서화하고, 필수 여부와 범위 등 요청 형식에 해당하는 검증 애너테이션을 사용한다. |
 | 응답 데이터 전송 객체(Response DTO) | `@Getter`, `@Schema` | 클래스와 응답 필드의 의미를 문서화한다. |
 | 열거형(Enum) | `@Getter`, `@RequiredArgsConstructor` | 필드가 있는 열거형의 기본 패턴이며, 상수는 `UPPER_SNAKE_CASE`로 작성한다. |

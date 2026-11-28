@@ -67,7 +67,7 @@ public class TemplateRepositoryTest {
     /** DB가 생성한 등록 정보와 페이지 순서, 숫자 블록 식별자, 그리드 배치를 복원한다. */
     @Test
     public void restoresStoredTemplate() {
-        TemplateVo input = new TemplateVo(null, TemplateDocumentType.RESUME, "기본 이력서", STRUCTURE, null);
+        TemplateVo input = TemplateVo.of(TemplateDocumentType.RESUME, "기본 이력서", STRUCTURE);
         TemplateEntity saved = this.templateRepository.saveAndFlush(input.convertToTemplateEntity());
         this.entityManager.clear();
 
@@ -93,7 +93,7 @@ public class TemplateRepositoryTest {
                 VALUES ('OTHER_TEXT', '기존 소스', '{"content":"기존 본문"}')
                 RETURNING source_id
                 """, Long.class);
-        TemplateVo input = new TemplateVo(null, TemplateDocumentType.PORTFOLIO, "기존 템플릿", STRUCTURE, null);
+        TemplateVo input = TemplateVo.of(TemplateDocumentType.PORTFOLIO, "기존 템플릿", STRUCTURE);
         Long templateId = this.templateRepository.saveAndFlush(input.convertToTemplateEntity()).getId();
 
         this.jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {

@@ -1,7 +1,5 @@
 package com.moon.catchup.domain.source;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
@@ -13,10 +11,20 @@ import lombok.Getter;
  */
 @Getter
 @EqualsAndHashCode
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CareerPeriodVo<T extends Comparable<? super T>> {
     private final T start;
     private final T end;
+
+    /**
+     * 검증된 시작값과 종료값을 초기화한다.
+     *
+     * @param start 시작값
+     * @param end 종료값
+     */
+    private CareerPeriodVo(T start, T end) {
+        this.start = start;
+        this.end = end;
+    }
 
     /**
      * 시작과 종료의 순서를 검증하고 기간을 생성한다.

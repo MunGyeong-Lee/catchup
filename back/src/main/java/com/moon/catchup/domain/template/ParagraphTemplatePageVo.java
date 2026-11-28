@@ -2,8 +2,6 @@ package com.moon.catchup.domain.template;
 
 import java.util.List;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -13,10 +11,20 @@ import lombok.Getter;
  * 문단 본문 및 작성 지침은 문서에서 다룬다.
  */
 @Getter
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ParagraphTemplatePageVo {
     private final int headingId;
     private final List<Integer> paragraphIds;
+
+    /**
+     * 소제목 식별자를 초기화하고 문단 식별자 목록을 표시 순서대로 복사한다.
+     *
+     * @param headingId 소제목 자리의 식별자
+     * @param paragraphIdList 표시 순서대로 나열한 문단 자리 식별자
+     */
+    private ParagraphTemplatePageVo(int headingId, List<Integer> paragraphIdList) {
+        this.headingId = headingId;
+        this.paragraphIds = List.copyOf(paragraphIdList);
+    }
 
     /**
      * 소제목 자리 하나와 순서가 있는 문단 자리로 자기소개서 페이지를 만든다.
@@ -26,6 +34,6 @@ public final class ParagraphTemplatePageVo {
      * @return 자기소개서 템플릿 페이지
      */
     public static ParagraphTemplatePageVo of(int headingId, List<Integer> paragraphIdList) {
-        return new ParagraphTemplatePageVo(headingId, List.copyOf(paragraphIdList));
+        return new ParagraphTemplatePageVo(headingId, paragraphIdList);
     }
 }
