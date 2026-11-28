@@ -130,7 +130,7 @@ public class SourceController implements SourceDocs {
     @PutMapping(path = "/api/sources/{sourceId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Override
     public ResponseVo update(@PathVariable long sourceId, @RequestBody SourceUpdateRequest req) {
-        long id = this.sourceManagementService.update(sourceId, req.getSourceType(), req.getName(), req.getDetails(), req.getRemoveAttachmentIds());
+        long id = this.sourceManagementService.update(sourceId, req.getSourceType(), req.getName(), req.getDetails(), copyRemovalIds(req));
         return ResponseVo.buildResponse(new SourceRegisterResponse(id));
     }
 
@@ -140,7 +140,7 @@ public class SourceController implements SourceDocs {
     public ResponseVo updateAttachments(@PathVariable long sourceId, @RequestPart("source") SourceUpdateRequest req,
                                         @RequestParam("requestId") UUID requestId, @RequestPart("files") List<MultipartFile> files) {
         long id = this.sourceManagementService.updateWithFiles(sourceId, req.getSourceType(), req.getName(), req.getDetails(),
-                req.getRemoveAttachmentIds(), requestId, files);
+                copyRemovalIds(req), requestId, files);
         return ResponseVo.buildResponse(new SourceRegisterResponse(id));
     }
 
@@ -150,5 +150,16 @@ public class SourceController implements SourceDocs {
     public ResponseVo delete(@PathVariable long sourceId) {
         this.sourceManagementService.delete(sourceId);
         return ResponseVo.buildResponse();
+    }
+
+    /**
+     * 생략하거나 null인 제거 대상은 빈 목록으로 처리하고 요청 목록은 복사한다.
+     *
+     * @param request 소스 수정 요청
+     * @return 서비스에 전달할 불변 목록
+     */
+    private static List<UUID> copyRemovalIds(SourceUpdateRequest request) {
+        List<UUID> attachmentIdList = request.getRemoveAttachmentIds();
+        return attachmentIdList == null ? List.of() : List.copyOf(attachmentIdList);
     }
 }

@@ -1,6 +1,9 @@
 spring:
   application:
     name: catchup
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   datasource:
     url: 'jdbc:postgresql://localhost:5432/catchup'
     username: '${CATCHUP_DB_USER}'
