@@ -13,24 +13,30 @@ import lombok.Getter;
 @Getter
 @Schema(description = "자격증 소스 등록 요청")
 public final class CertificationRegisterRequest extends SourceRegisterRequest {
+    /** 자격증 이름 */
     @JsonProperty
     @Schema(description = "자격증 이름", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private Object certificateName;
 
+    /** 취득일 (YYYY-MM-DD, 시간대 없음) */
     @Schema(description = "취득일 (YYYY-MM-DD, 시간대 없음)", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate issuedOn;
 
+    /** 발급 기관 */
     @JsonProperty
     @Schema(description = "발급 기관", type = "string")
     private Object issuer;
 
+    /** 만료일 (YYYY-MM-DD, 시간대 없음) */
     @Schema(description = "만료일 (YYYY-MM-DD, 시간대 없음)", type = "string")
     private LocalDate expiresOn;
 
+    /** 자격증 번호 */
     @JsonProperty
     @Schema(description = "자격증 번호", type = "string")
     private Object certificateNumber;
 
+    /** 확인 링크 */
     @JsonProperty
     @Schema(description = "확인 링크", type = "string")
     private Object verificationLink;

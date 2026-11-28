@@ -47,12 +47,14 @@ import lombok.Getter;
 public sealed class SourceRegisterRequest
         permits CareerHistoryRegisterRequest, ExperienceRegisterRequest, CertificationRegisterRequest,
                 TargetCompanyRegisterRequest, WritingStyleRegisterRequest, OtherTextRegisterRequest {
+    /** 소스 유형 */
     @JsonProperty
     @Schema(description = "소스 유형", requiredMode = Schema.RequiredMode.REQUIRED,
             allowableValues = {"CAREER_HISTORY", "EXPERIENCE", "CERTIFICATION",
                     "TARGET_COMPANY", "WRITING_STYLE", "OTHER_TEXT"})
     private String sourceType;
 
+    /** 공통 소스 이름 */
     @JsonProperty
     @Schema(description = "공통 소스 이름", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private Object name;

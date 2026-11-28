@@ -13,28 +13,35 @@ import lombok.Getter;
 @Getter
 @Schema(description = "이력 소스 등록 요청")
 public final class CareerHistoryRegisterRequest extends SourceRegisterRequest {
+    /** 소속명 */
     @JsonProperty
     @Schema(description = "소속명", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private Object organization;
 
+    /** 이력 구분 */
     @JsonProperty
     @Schema(description = "이력 구분", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private Object historyType;
 
+    /** 시작 연월 (YYYY-MM, 시간대 없음) */
     @Schema(description = "시작 연월 (YYYY-MM, 시간대 없음)", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private YearMonth startMonth;
 
+    /** 직무·전공·과정명 */
     @JsonProperty
     @Schema(description = "직무·전공·과정명", type = "string")
     private Object role;
 
+    /** 종료 연월 (YYYY-MM, 시간대 없음) */
     @Schema(description = "종료 연월 (YYYY-MM, 시간대 없음)", type = "string")
     private YearMonth endMonth;
 
+    /** 진행 중 여부 */
     @JsonProperty
     @Schema(description = "진행 중 여부", type = "boolean")
     private Object ongoing;
 
+    /** 상세 설명 */
     @JsonProperty
     @Schema(description = "상세 설명", type = "string")
     private Object description;

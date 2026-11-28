@@ -230,6 +230,15 @@ public class TemplateCreateIntegrationTest {
         assertThat(response.statusCode()).isEqualTo(200);
         JsonNode operation = this.jsonMapper.readTree(response.body()).path("paths").path(TEMPLATE_PATH).path("post");
         assertThat(operation.path("responses").has("201")).isTrue();
+        JsonNode schemas = this.jsonMapper.readTree(response.body()).path("components").path("schemas");
+        JsonNode requestSchema = schemas.path("TemplateCreateRequest");
+        assertThat(requestSchema.path("discriminator").path("propertyName").asString()).isEqualTo("documentType");
+        JsonNode placementSchema = schemas.path("GridTemplateBlockPlacementRequest");
+        assertThat(placementSchema.path("properties").path("rowSpan").path("default").asInt()).isEqualTo(1);
+        assertThat(placementSchema.path("required").valueStream().map(JsonNode::asString))
+                .contains("columnSpan").doesNotContain("rowSpan");
+        assertThat(schemas.path("ParagraphTemplatePageRequest").path("required").valueStream().map(JsonNode::asString))
+                .contains("headingId", "paragraphIds");
         assertThat(operation.path("responses").path("400").path("description").asString())
                 .contains("INVALID_REQUEST", "VALIDATION_FAILED");
         JsonNode examples = operation.path("requestBody").path("content").path("application/json").path("examples");

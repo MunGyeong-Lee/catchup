@@ -10,22 +10,27 @@ import lombok.Getter;
 @Getter
 @Schema(description = "지원회사 소스 등록 요청")
 public final class TargetCompanyRegisterRequest extends SourceRegisterRequest {
+    /** 회사명 */
     @JsonProperty
     @Schema(description = "회사명", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private Object companyName;
 
+    /** 지원 직무 */
     @JsonProperty
     @Schema(description = "지원 직무", type = "string")
     private Object jobTitle;
 
+    /** 회사·공고 메모 */
     @JsonProperty
     @Schema(description = "회사·공고 메모", type = "string")
     private Object content;
 
+    /** 인재상 */
     @JsonProperty
     @Schema(description = "인재상", type = "string")
     private Object idealCandidateProfile;
 
+    /** 직무 기술서 */
     @JsonProperty
     @Schema(description = "직무 기술서", type = "string")
     private Object jobDescription;

@@ -9,6 +9,7 @@ import lombok.Getter;
 @Getter
 @Schema(description = "그리드형 템플릿 등록 요청")
 public final class GridTemplateCreateRequest extends TemplateCreateRequest {
+    /** 그리드형 편집 구조 */
     @JsonProperty
     @Schema(description = "그리드형 편집 구조", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "템플릿 구조를 입력해 주세요.")
