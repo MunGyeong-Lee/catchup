@@ -32,7 +32,7 @@ public class TemplateCreateIntegrationTest {
               "documentType": "RESUME",
               "title": "template-create-http-test-grid",
               "structure": {"pages": [{"blocks": [
-                {"id": 1, "type": "TEXT", "placement": {"row": 1, "column": 1, "columnSpan": 6}},
+                {"id": 1, "type": "TEXT", "placement": {"row": 1, "column": 1, "columnSpan": 6, "rowSpan": 3}},
                 {"id": 2, "type": "IMAGE_PLACEHOLDER", "placement": {"row": 1, "column": 7, "columnSpan": 6}}
               ]}]}
             }
@@ -70,6 +70,8 @@ public class TemplateCreateIntegrationTest {
                 .isEqualTo("RESUME");
         JsonNode storedPage = readStoredStructure(templateId).path("pages").get(0);
         assertThat(storedPage.path("orientation").asString()).isEqualTo("PORTRAIT");
+        assertThat(storedPage.path("blocks").get(0).path("placement").path("rowSpan").intValue()).isEqualTo(3);
+        assertThat(storedPage.path("blocks").get(1).path("placement").path("rowSpan").intValue()).isEqualTo(1);
         assertThat(storedPage.path("blocks").get(1).path("type").asString()).isEqualTo("IMAGE_PLACEHOLDER");
         assertThat(storedPage.path("blocks").get(1).path("placement").path("column").intValue()).isEqualTo(7);
     }
@@ -85,12 +87,34 @@ public class TemplateCreateIntegrationTest {
         assertThat(readStoredStructure(templateId)).isEqualTo(this.jsonMapper.readTree(PARAGRAPH_REQUEST).path("structure"));
     }
 
-    /** 읽을 수 없는 본문과 알려지지 않은 코드 및 잘못된 JSON 값 형식을 거부한다. */
+    /** 기본 JSON 바인딩으로 변환된 문서 유형과 제목을 저장한다. */
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "0|12|12",
+            "\"0\"|true|true"
+    })
+    public void createsTemplateFromCoercibleValues(String documentType, String title, String expectedTitle) throws Exception {
+        String payload = GRID_REQUEST.replace("\"RESUME\"", documentType)
+                .replace("\"template-create-http-test-grid\"", title);
+        long templateId = create(payload);
+        try {
+            assertThat(this.jdbcTemplate.queryForObject(
+                    "SELECT document_type FROM templates WHERE template_id = ?", String.class, templateId))
+                    .isEqualTo("RESUME");
+            assertThat(this.jdbcTemplate.queryForObject(
+                    "SELECT title FROM templates WHERE template_id = ?", String.class, templateId))
+                    .isEqualTo(expectedTitle);
+        } finally {
+            this.jdbcTemplate.update("DELETE FROM templates WHERE template_id = ?", templateId);
+        }
+    }
+
+    /** 읽을 수 없는 본문과 바인딩할 수 없는 값을 거부한다. */
     @ParameterizedTest
     @ValueSource(strings = {
             "{", "[]", "null",
-            "{\"documentType\":\"UNKNOWN\"}", "{\"documentType\":0}", "{\"documentType\":\"resume\"}",
-            "{\"documentType\":\"RESUME\",\"title\":12}",
+            "{\"documentType\":\"UNKNOWN\"}", "{\"documentType\":99}", "{\"documentType\":\"resume\"}",
+            "{\"documentType\":\"RESUME\",\"title\":{}}",
             "{\"documentType\":\"RESUME\",\"title\":\"템플릿\",\"structure\":\"{}\"}"
     })
     public void returnsInvalidRequestForMalformedInput(String request) throws Exception {
@@ -110,7 +134,11 @@ public class TemplateCreateIntegrationTest {
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
             "{}|documentType",
+            "{\"documentType\":null}|documentType",
+            "{\"documentType\":\"RESUME\",\"structure\":{}}|title",
+            "{\"documentType\":\"RESUME\",\"title\":\"  \",\"structure\":{}}|title",
             "{\"documentType\":\"RESUME\",\"title\":\"템플릿\"}|structure",
+            "{\"documentType\":\"RESUME\",\"title\":\"템플릿\",\"structure\":null}|structure",
             "{\"documentType\":\"RESUME\",\"title\":\"템플릿\",\"structure\":{}}|pages"
     })
     public void returnsFieldErrorForOmittedInput(String request, String field) throws Exception {
@@ -122,7 +150,7 @@ public class TemplateCreateIntegrationTest {
     public void returnsValidationErrorsWithoutSaving() throws Exception {
         assertThat(readError(PARAGRAPH_REQUEST.replace("COVER_LETTER", "RESUME"), "VALIDATION_FAILED")
                 .path("field_errors").has("structure")).isTrue();
-        assertThat(readError(GRID_REQUEST.replace("\"column\": 7", "\"column\": 6"), "VALIDATION_FAILED")
+        assertThat(readError(GRID_REQUEST.replace("\"row\": 1, \"column\": 7", "\"row\": 3, \"column\": 6"), "VALIDATION_FAILED")
                 .path("field_errors").path("blocks").asString()).isEqualTo("블록이 겹칩니다.");
         assertThat(readError(PARAGRAPH_REQUEST.replace("[1, 2, 3]", "[1, 3]"), "VALIDATION_FAILED")
                 .path("field_errors").has("paragraphIds")).isTrue();

@@ -13,7 +13,7 @@ public class GridTemplateStructureVoTest {
     @Test
     public void keepsPageAndBlockOrderWithMixedOrientations() {
         GridTemplateBlockVo photo = GridTemplateBlockVo.of(1, TemplateBlockType.IMAGE_PLACEHOLDER, null,
-                GridTemplateBlockPlacementVo.of(1, 1, 4));
+                GridTemplateBlockPlacementVo.of(1, 1, 4, 1));
         GridTemplateBlockVo motivation = textBlock(2, 1, 5, 8);
         GridTemplateBlockVo introduction = textBlock(3, 2, 1, 12);
         List<GridTemplateBlockVo> blockList = new ArrayList<>(List.of(photo, motivation, introduction));
@@ -52,6 +52,6 @@ public class GridTemplateStructureVoTest {
     /** 유효한 위치의 텍스트 블록을 만든다. */
     private static GridTemplateBlockVo textBlock(int id, int row, int column, int columnSpan) {
         return GridTemplateBlockVo.of(id, TemplateBlockType.TEXT, "문단",
-                GridTemplateBlockPlacementVo.of(row, column, columnSpan));
+                GridTemplateBlockPlacementVo.of(row, column, columnSpan, 1));
     }
 }

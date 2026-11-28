@@ -1,5 +1,6 @@
 package com.moon.catchup.common.http;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -27,6 +30,23 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(code.getStatus()).headers(exception.getHeaders())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ResponseVo.failure(code, exception.getFieldErrors()));
+    }
+
+    /** 요청 DTO의 필드 검증 오류를 공통 입력 오류 형식으로 변환한다. */
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException exception,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
+            String message = fieldError.getDefaultMessage();
+            fieldErrors.putIfAbsent(fieldError.getField(),
+                    message == null ? ErrorCode.VALIDATION_FAILED.getUserMessage() : message);
+        }
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.putAll(headers);
+        responseHeaders.setContentType(MediaType.APPLICATION_JSON);
+        return super.handleExceptionInternal(exception, ResponseVo.failure(ErrorCode.VALIDATION_FAILED, fieldErrors),
+                responseHeaders, status, request);
     }
 
     /** 요청 파싱과 크기 제한 등 Spring이 처리한 HTTP 오류를 공통 형식으로 변환한다. */

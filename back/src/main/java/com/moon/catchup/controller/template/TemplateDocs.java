@@ -23,7 +23,7 @@ public interface TemplateDocs {
      */
     @Operation(summary = "템플릿 등록",
             description = "이력서, 포트폴리오, 경력기술서는 그리드형이고 자기소개서는 문단형입니다. "
-                    + "그리드형은 12열이며 행과 열은 1부터 시작합니다. 방향을 생략하면 세로입니다. "
+                    + "그리드형은 12열이며 행과 열은 1부터 시작합니다. 방향을 생략하면 세로이며 rowSpan을 생략하면 한 행을 차지합니다. "
                     + "문단형은 한 페이지에 한 문항을 두고 문단 번호를 각 문항에서 1부터 연속으로 보냅니다.",
             requestBody = @RequestBody(required = true, content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = TemplateCreateRequest.class),
@@ -35,7 +35,7 @@ public interface TemplateDocs {
                                       "structure": {"pages": [
                                         {"orientation": "PORTRAIT", "blocks": [
                                           {"id": 1, "type": "TEXT", "title": "경력",
-                                           "placement": {"row": 1, "column": 1, "columnSpan": 12}}
+                                           "placement": {"row": 1, "column": 1, "columnSpan": 12, "rowSpan": 2}}
                                         ]}
                                       ]}
                                     }
@@ -54,7 +54,7 @@ public interface TemplateDocs {
     @ApiResponse(responseCode = "201", description = "등록한 템플릿 식별자",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = TemplateCreateEnvelope.class)))
-    @ApiResponse(responseCode = "400", description = "JSON 형식이나 유형 코드가 잘못됐으면 INVALID_REQUEST, "
+    @ApiResponse(responseCode = "400", description = "JSON을 읽을 수 없거나 요청 값 또는 구조를 해석할 수 없으면 INVALID_REQUEST, "
             + "필수값 및 구조 검증에 실패하면 VALIDATION_FAILED와 field_errors를 반환합니다.",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResponseVo.class)))
     public ResponseVo create(TemplateCreateRequest req);
