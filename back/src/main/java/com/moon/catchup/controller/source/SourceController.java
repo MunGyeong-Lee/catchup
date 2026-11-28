@@ -130,7 +130,7 @@ public class SourceController implements SourceDocs {
     @PutMapping(path = "/api/sources/{sourceId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Override
     public ResponseVo update(@PathVariable long sourceId, @RequestBody SourceUpdateRequest req) {
-        long id = this.sourceManagementService.update(sourceId, req.getSourceType(), req.getName(), req.getDetails(), req.getRemoveAttachmentIds());
+        long id = this.sourceManagementService.update(sourceId, req.getSourceType(), req.getName(), req.getDetails(), List.copyOf(req.getRemoveAttachmentIds()));
         return ResponseVo.buildResponse(new SourceRegisterResponse(id));
     }
 
@@ -140,7 +140,7 @@ public class SourceController implements SourceDocs {
     public ResponseVo updateAttachments(@PathVariable long sourceId, @RequestPart("source") SourceUpdateRequest req,
                                         @RequestParam("requestId") UUID requestId, @RequestPart("files") List<MultipartFile> files) {
         long id = this.sourceManagementService.updateWithFiles(sourceId, req.getSourceType(), req.getName(), req.getDetails(),
-                req.getRemoveAttachmentIds(), requestId, files);
+                List.copyOf(req.getRemoveAttachmentIds()), requestId, files);
         return ResponseVo.buildResponse(new SourceRegisterResponse(id));
     }
 
