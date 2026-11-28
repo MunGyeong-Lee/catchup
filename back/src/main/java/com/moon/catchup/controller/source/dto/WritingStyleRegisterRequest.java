@@ -10,6 +10,7 @@ import lombok.Getter;
 @Getter
 @Schema(description = "문체 및 어투 소스 등록 요청")
 public final class WritingStyleRegisterRequest extends SourceRegisterRequest {
+    /** 문체 설명 또는 예문 */
     @JsonProperty
     @Schema(description = "문체 설명 또는 예문", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private Object content;

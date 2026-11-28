@@ -34,11 +34,13 @@ import lombok.Getter;
                 @DiscriminatorMapping(value = "COVER_LETTER", schema = ParagraphTemplateCreateRequest.class)
         })
 public abstract sealed class TemplateCreateRequest permits GridTemplateCreateRequest, ParagraphTemplateCreateRequest {
+    /** 문서 유형 */
     @JsonProperty
     @Schema(description = "문서 유형", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "문서 유형을 선택해 주세요.")
     private TemplateDocumentType documentType;
 
+    /** 템플릿 제목 */
     @JsonProperty
     @Schema(description = "템플릿 제목", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "템플릿 제목을 입력해 주세요.")
