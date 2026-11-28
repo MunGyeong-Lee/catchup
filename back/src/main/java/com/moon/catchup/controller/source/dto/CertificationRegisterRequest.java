@@ -3,9 +3,9 @@ package com.moon.catchup.controller.source.dto;
 import java.time.LocalDate;
 import java.util.Map;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.OptBoolean;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.moon.catchup.domain.source.SourceDateFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
@@ -19,8 +19,6 @@ public final class CertificationRegisterRequest extends SourceRegisterRequest {
     private Object certificateName;
 
     /** 취득일 (YYYY-MM-DD, 시간대 없음) */
-    @JsonProperty
-    @JsonFormat(pattern = "uuuu-MM-dd", lenient = OptBoolean.FALSE)
     @Schema(description = "취득일 (YYYY-MM-DD, 시간대 없음)", type = "string", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate issuedOn;
 
@@ -30,8 +28,6 @@ public final class CertificationRegisterRequest extends SourceRegisterRequest {
     private Object issuer;
 
     /** 만료일 (YYYY-MM-DD, 시간대 없음) */
-    @JsonProperty
-    @JsonFormat(pattern = "uuuu-MM-dd", lenient = OptBoolean.FALSE)
     @Schema(description = "만료일 (YYYY-MM-DD, 시간대 없음)", type = "string")
     private LocalDate expiresOn;
 
@@ -44,6 +40,26 @@ public final class CertificationRegisterRequest extends SourceRegisterRequest {
     @JsonProperty
     @Schema(description = "확인 링크", type = "string")
     private Object verificationLink;
+
+    /**
+     * 등록 요청의 issuedOn 필드를 변환한다.
+     *
+     * @param value 이 필드에 들어온 원래 JSON 값
+     */
+    @JsonSetter("issuedOn")
+    private void bindIssuedOn(Object value) {
+        this.issuedOn = bindDate("issuedOn", value, SourceDateFormat::parseDate);
+    }
+
+    /**
+     * 등록 요청의 expiresOn 필드를 변환한다.
+     *
+     * @param value 이 필드에 들어온 원래 JSON 값
+     */
+    @JsonSetter("expiresOn")
+    private void bindExpiresOn(Object value) {
+        this.expiresOn = bindDate("expiresOn", value, SourceDateFormat::parseDate);
+    }
 
     /**
      * 자격증 등록 필드를 기존 상세 저장 키에 연결한다.

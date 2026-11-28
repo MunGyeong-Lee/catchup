@@ -115,7 +115,7 @@ public class SourceServiceImpl implements SourceService {
                     normalizedDetails.put(field, text.strip());
                 }
             } else if (isDateField(field)
-                    && (value instanceof YearMonth || value instanceof LocalDate)) {
+                    && (value instanceof YearMonth || value instanceof LocalDate || value == SourceDateFormat.Invalid.VALUE)) {
                 normalizedDetails.put(field, value);
             } else if (value != null) {
                 Map<String, String> fieldErrors = Map.of(detailErrorField(field), "입력 형식을 확인해 주세요.");

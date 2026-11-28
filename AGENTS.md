@@ -69,13 +69,6 @@
 
 소스 관리의 이름은 Java와 JavaScript에서 `Source` 또는 `source`, 요청 경로에서 `sources`, 데이터베이스 테이블에서 `sources`를 사용한다. 요청과 응답의 소스 식별자는 `sourceId`, 소스 유형은 `sourceType`, 첨부 등록 요청의 소스 입력 부분은 `source`로 표기한다.
 
-#### Jackson 요청 바인딩
-
-- 요청 DTO 필드는 `String`, `Integer`, `YearMonth`, `LocalDate`, `List<UUID>`처럼 입력의 의미에 맞는 타입으로 선언한다. 값 대입을 위해 Jackson 전용 생성자나 setter를 따로 작성하지 않는다.
-- 공통 설정은 `application.yml`의 `spring.jackson`에서 관리한다. 요청 키 이름, 미정의 키 처리, `null` 처리, 타입 자동 변환은 각각 API 계약에 맞춰 결정한다.
-- 필수값·공백·범위는 DTO의 Bean Validation과 컨트롤러의 `@Valid`로 검사한다. 시작일과 종료일의 순서처럼 값 사이의 관계나 DB 상태가 필요한 규칙은 서비스나 VO에서 검사한다.
-- 기본 바인딩이 계약과 다르면 Jackson 설정과 표준 애너테이션으로 해결할 수 있는지 먼저 확인한다. `Object` 필드나 커스텀 역직렬화는 기존 기능으로 표현할 수 없는 계약에 한해 사용하고, 어떤 입력과 응답을 보존하는지 테스트한다.
-
 ### 핵심 구현 패턴
 
 #### 계층별 표준 애너테이션
