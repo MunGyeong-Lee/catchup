@@ -1,12 +1,8 @@
 package com.moon.catchup.controller.template.dto;
 
 import java.util.List;
-import java.util.Map;
 
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.moon.catchup.common.http.ApiException;
-import com.moon.catchup.common.http.ErrorCode;
 import com.moon.catchup.domain.template.TemplateBlockType;
 import com.moon.catchup.domain.template.TemplatePageOrientation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,20 +30,6 @@ public final class GridTemplateStructureRequest {
         @JsonProperty
         @Schema(description = "페이지에 배치할 블록 목록", requiredMode = Schema.RequiredMode.REQUIRED)
         private List<Block> blocks;
-
-        /**
-         * 다른 구조 유형의 전용 필드 거부
-         *
-         * @param field 선언되지 않은 JSON 필드명
-         * @param value 요청에 포함된 값
-         * @throws ApiException 다른 구조 유형에만 있는 필드를 입력한 경우
-         */
-        @JsonAnySetter
-        private void rejectIncompatibleField(String field, Object value) {
-            if ("headingId".equals(field) || "paragraphIds".equals(field)) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("structure", "그리드형 페이지를 사용해 주세요."));
-            }
-        }
     }
 
     /** 그리드 블록의 식별자, 유형, 선택 제목 및 배치 */

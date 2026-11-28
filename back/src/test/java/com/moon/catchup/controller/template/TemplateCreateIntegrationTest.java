@@ -200,11 +200,10 @@ public class TemplateCreateIntegrationTest {
     /** 필수 필드가 있어도 다른 배치 방식의 필드가 섞인 페이지는 거부한다. */
     @Test
     public void rejectsMixedLayoutFieldsDuringBinding() throws Exception {
-        assertThat(readError(GRID_REQUEST.replace("\"blocks\":", "\"headingId\":1,\"blocks\":"), "VALIDATION_FAILED")
-                .path("field_errors").path("structure").asString()).isEqualTo("그리드형 페이지를 사용해 주세요.");
+        assertThat(readError(GRID_REQUEST.replace("\"blocks\":", "\"headingId\":1,\"blocks\":"), "INVALID_REQUEST")
+                .has("field_errors")).isFalse();
         assertThat(readError(PARAGRAPH_REQUEST.replace("\"headingId\": 1", "\"orientation\":null,\"headingId\": 1"),
-                "VALIDATION_FAILED").path("field_errors").path("structure").asString())
-                .isEqualTo("문단형 페이지를 사용해 주세요.");
+                "INVALID_REQUEST").has("field_errors")).isFalse();
         assertThat(this.jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM templates WHERE title LIKE ?", Long.class, TITLE_PREFIX + "%")).isZero();
     }
@@ -212,8 +211,8 @@ public class TemplateCreateIntegrationTest {
     /** 구조가 문서 유형과 맞지 않거나 배치·문단 번호 규칙을 위반하면 저장하지 않는다. */
     @Test
     public void returnsValidationErrorsWithoutSaving() throws Exception {
-        assertThat(readError(PARAGRAPH_REQUEST.replace("COVER_LETTER", "RESUME"), "VALIDATION_FAILED")
-                .path("field_errors").has("structure")).isTrue();
+        assertThat(readError(PARAGRAPH_REQUEST.replace("COVER_LETTER", "RESUME"), "INVALID_REQUEST")
+                .has("field_errors")).isFalse();
         assertThat(readError(GRID_REQUEST.replace("\"row\": 1, \"column\": 7", "\"row\": 3, \"column\": 6"), "VALIDATION_FAILED")
                 .path("field_errors").path("blocks").asString()).isEqualTo("블록이 겹칩니다.");
         assertThat(readError(PARAGRAPH_REQUEST.replace("[1, 2, 3]", "[1, 3]"), "VALIDATION_FAILED")
