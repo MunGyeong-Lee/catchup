@@ -127,7 +127,7 @@
   cursor: pointer;
 }
 
-.career-category-toggle::after {
+.career-category-toggle[aria-expanded]::after {
   flex: none;
   width: .42rem;
   height: .42rem;
@@ -142,6 +142,7 @@
 .career-category-toggle[aria-expanded='true']::after { transform: translateY(-.1rem) rotate(45deg); }
 
 .career-categories .career-category-toggle:hover { background: var(--career-hover); }
+.career-categories .career-category-toggle[aria-current='page'] { background: var(--career-selected); }
 
 .career-category-panel {
   display: grid;
