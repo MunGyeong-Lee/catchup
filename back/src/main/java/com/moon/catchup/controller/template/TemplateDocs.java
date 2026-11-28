@@ -56,7 +56,7 @@ public interface TemplateDocs {
     @ApiResponse(responseCode = "201", description = "등록한 템플릿 식별자",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = TemplateCreateEnvelope.class)))
-    @ApiResponse(responseCode = "400", description = "JSON을 읽을 수 없거나 요청 값 또는 구조를 해석할 수 없으면 INVALID_REQUEST, "
+    @ApiResponse(responseCode = "400", description = "정의되지 않은 JSON 키가 있거나 요청 값 또는 구조를 해석할 수 없으면 INVALID_REQUEST, "
             + "필수값 및 구조 검증에 실패하면 VALIDATION_FAILED와 field_errors를 반환합니다.",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ResponseVo.class)))
     public ResponseVo create(TemplateCreateRequest req);
