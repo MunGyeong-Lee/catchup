@@ -95,7 +95,7 @@ public class TemplateCreateTest {
         assertValidationFailure("pages", () -> this.templateService.createGrid(TemplateDocumentType.RESUME, "이력서", null));
         assertValidationFailure("blocks", () -> this.templateService.createGrid(TemplateDocumentType.RESUME, "이력서", grid()));
         assertValidationFailure("blocks", () -> this.templateService.createGrid(TemplateDocumentType.RESUME, "이력서",
-                grid(GridTemplateBlockVo.of(1, null, null, GridTemplateBlockPlacementVo.of(1, 1, 1)))));
+                grid(GridTemplateBlockVo.of(1, null, null, GridTemplateBlockPlacementVo.of(1, 1, 1, 1)))));
         assertValidationFailure("placement", () -> this.templateService.createGrid(TemplateDocumentType.RESUME, "이력서",
                 grid(GridTemplateBlockVo.of(1, TemplateBlockType.TEXT, null, null))));
         assertValidationFailure("blocks", () -> this.templateService.createGrid(TemplateDocumentType.RESUME, "이력서",
@@ -156,7 +156,7 @@ public class TemplateCreateTest {
 
     private static GridTemplateBlockVo block(int id, int row, int column, int columnSpan) {
         return GridTemplateBlockVo.of(id, TemplateBlockType.TEXT, null,
-                GridTemplateBlockPlacementVo.of(row, column, columnSpan));
+                GridTemplateBlockPlacementVo.of(row, column, columnSpan, 1));
     }
 
     private static void assertValidationFailure(String field, ThrowingCallable call) {
