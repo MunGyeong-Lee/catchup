@@ -1,6 +1,16 @@
 spring:
   application:
     name: catchup
+  jackson:
+    mapper:
+      use-getters-as-setters: true
+      allow-final-fields-as-mutators: true
+    deserialization:
+      fail-on-null-for-primitives: false
+      fail-on-unknown-properties: true
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
   datasource:
     url: 'jdbc:postgresql://localhost:5432/catchup'
     username: '${CATCHUP_DB_USER}'
