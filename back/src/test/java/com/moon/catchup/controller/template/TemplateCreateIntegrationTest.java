@@ -109,6 +109,28 @@ public class TemplateCreateIntegrationTest {
         }
     }
 
+    /** 기존 숫자 유형 입력에도 자기소개서의 문단형 구조를 바인딩한다. */
+    @ParameterizedTest
+    @ValueSource(strings = {"3", "\"3\""})
+    public void bindsParagraphStructureFromNumericDocumentType(String documentType) throws Exception {
+        long templateId = create(PARAGRAPH_REQUEST.replace("\"COVER_LETTER\"", documentType));
+        assertThat(readStoredStructure(templateId)).isEqualTo(this.jsonMapper.readTree(PARAGRAPH_REQUEST).path("structure"));
+    }
+
+    /** 구조가 문서 유형보다 먼저 와도 같은 구조로 저장한다. */
+    @Test
+    public void bindsStructureBeforeDocumentType() throws Exception {
+        ObjectNode original = (ObjectNode) this.jsonMapper.readTree(GRID_REQUEST);
+        ObjectNode reordered = this.jsonMapper.createObjectNode();
+        reordered.set("structure", original.path("structure"));
+        reordered.set("title", original.path("title"));
+        reordered.set("documentType", original.path("documentType"));
+        long templateId = create(this.jsonMapper.writeValueAsString(reordered));
+
+        assertThat(readStoredStructure(templateId).path("pages").get(0).path("blocks").get(0)
+                .path("placement").path("rowSpan").intValue()).isEqualTo(3);
+    }
+
     /** 읽을 수 없는 본문과 바인딩할 수 없는 값을 거부한다. */
     @ParameterizedTest
     @ValueSource(strings = {
@@ -122,12 +144,42 @@ public class TemplateCreateIntegrationTest {
         assertThat(error.has("field_errors")).isFalse();
     }
 
-    /** 페이지 방향과 블록 유형은 정의된 문자열 코드만 받는다. */
+    /** 정의되지 않은 페이지 방향과 블록 유형을 거부한다. */
     @Test
     public void rejectsUnknownNestedCodes() throws Exception {
         readError(GRID_REQUEST.replace("\"blocks\":", "\"orientation\":\"SIDEWAYS\",\"blocks\":"), "INVALID_REQUEST");
         readError(GRID_REQUEST.replace("\"TEXT\"", "\"text\""), "INVALID_REQUEST");
-        readError(GRID_REQUEST.replace("\"columnSpan\": 6", "\"columnSpan\": 6.5"), "INVALID_REQUEST");
+    }
+
+    /** 숫자로 보낸 제목과 열거형 순번에 기본 타입 변환을 적용한다. */
+    @Test
+    public void storesGridValuesConvertedByJackson() throws Exception {
+        String request = GRID_REQUEST.replace("\"blocks\":", "\"orientation\":1,\"blocks\":")
+                .replace("\"type\": \"TEXT\"", "\"type\": 0, \"title\": 12");
+        long templateId = create(request);
+        JsonNode page = readStoredStructure(templateId).path("pages").get(0);
+        JsonNode block = page.path("blocks").get(0);
+
+        assertThat(page.path("orientation").asString()).isEqualTo("LANDSCAPE");
+        assertThat(block.path("type").asString()).isEqualTo("TEXT");
+        assertThat(block.path("title").asString()).isEqualTo("12");
+    }
+
+    /** 그리드 정수 필드는 소수 부분을 제거한 값으로 저장한다. */
+    @Test
+    public void storesTruncatedGridDimensions() throws Exception {
+        long templateId = create(GRID_REQUEST.replace("\"columnSpan\": 6", "\"columnSpan\": 6.5"));
+        JsonNode placement = readStoredStructure(templateId).path("pages").get(0).path("blocks").get(0).path("placement");
+
+        assertThat(placement.path("columnSpan").intValue()).isEqualTo(6);
+    }
+
+    /** 정수로 변환된 값에도 그리드 범위 검증을 적용한다. */
+    @Test
+    public void rejectsTruncatedWidthOutsideGridRange() throws Exception {
+        JsonNode error = readError(GRID_REQUEST.replace("\"columnSpan\": 6", "\"columnSpan\": 0.5"),
+                "VALIDATION_FAILED");
+        assertThat(error.path("field_errors").has("placement")).isTrue();
     }
 
     /** 필수 항목의 누락을 해당 입력 오류로 반환한다. */
@@ -143,6 +195,18 @@ public class TemplateCreateIntegrationTest {
     })
     public void returnsFieldErrorForOmittedInput(String request, String field) throws Exception {
         assertThat(readError(request, "VALIDATION_FAILED").path("field_errors").has(field)).isTrue();
+    }
+
+    /** 필수 필드가 있어도 다른 배치 방식의 필드가 섞인 페이지는 거부한다. */
+    @Test
+    public void rejectsMixedLayoutFieldsDuringBinding() throws Exception {
+        assertThat(readError(GRID_REQUEST.replace("\"blocks\":", "\"headingId\":1,\"blocks\":"), "VALIDATION_FAILED")
+                .path("field_errors").path("structure").asString()).isEqualTo("그리드형 페이지를 사용해 주세요.");
+        assertThat(readError(PARAGRAPH_REQUEST.replace("\"headingId\": 1", "\"orientation\":null,\"headingId\": 1"),
+                "VALIDATION_FAILED").path("field_errors").path("structure").asString())
+                .isEqualTo("문단형 페이지를 사용해 주세요.");
+        assertThat(this.jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM templates WHERE title LIKE ?", Long.class, TITLE_PREFIX + "%")).isZero();
     }
 
     /** 구조가 문서 유형과 맞지 않거나 배치·문단 번호 규칙을 위반하면 저장하지 않는다. */

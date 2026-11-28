@@ -8,6 +8,10 @@ import java.util.Set;
 
 import com.moon.catchup.common.http.ApiException;
 import com.moon.catchup.common.http.ErrorCode;
+import com.moon.catchup.controller.template.dto.GridTemplateCreateRequest;
+import com.moon.catchup.controller.template.dto.GridTemplateStructureRequest;
+import com.moon.catchup.controller.template.dto.ParagraphTemplateCreateRequest;
+import com.moon.catchup.controller.template.dto.ParagraphTemplateStructureRequest;
 import com.moon.catchup.controller.template.dto.TemplateCreateRequest;
 import com.moon.catchup.domain.template.GridTemplateBlockPlacementVo;
 import com.moon.catchup.domain.template.GridTemplateBlockVo;
@@ -15,16 +19,13 @@ import com.moon.catchup.domain.template.GridTemplatePageVo;
 import com.moon.catchup.domain.template.GridTemplateStructureVo;
 import com.moon.catchup.domain.template.ParagraphTemplatePageVo;
 import com.moon.catchup.domain.template.ParagraphTemplateStructureVo;
-import com.moon.catchup.domain.template.TemplateBlockType;
 import com.moon.catchup.domain.template.TemplateDocumentType;
 import com.moon.catchup.domain.template.TemplateLayoutType;
-import com.moon.catchup.domain.template.TemplatePageOrientation;
 import com.moon.catchup.domain.template.TemplateVo;
 import com.moon.catchup.repository.template.TemplateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** 템플릿 등록 입력을 검증하고 편집 구조를 JSONB 컬럼에 저장한다. */
@@ -49,8 +50,11 @@ public class TemplateServiceImpl implements TemplateService {
     @Override
     @Transactional
     public long createGrid(TemplateDocumentType documentType, TemplateCreateRequest req) {
-        JsonNode pageList = readPages(req.getStructure());
-        return this.createGrid(documentType, req.getTitle(), readGrid(pageList));
+        if (!(req instanceof GridTemplateCreateRequest request)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("structure", "그리드형 페이지를 사용해 주세요."));
+        }
+        GridTemplateStructureVo gridTemplateStructureVo = toGridStructure(request.getStructure());
+        return this.createGrid(documentType, req.getTitle(), gridTemplateStructureVo);
     }
 
     /**
@@ -66,8 +70,11 @@ public class TemplateServiceImpl implements TemplateService {
     @Override
     @Transactional
     public long createParagraph(TemplateDocumentType documentType, TemplateCreateRequest req) {
-        JsonNode pageList = readPages(req.getStructure());
-        return this.createParagraph(documentType, req.getTitle(), readParagraph(pageList));
+        if (!(req instanceof ParagraphTemplateCreateRequest request)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("structure", "문단형 페이지를 사용해 주세요."));
+        }
+        ParagraphTemplateStructureVo paragraphTemplateStructureVo = toParagraphStructure(request.getStructure());
+        return this.createParagraph(documentType, req.getTitle(), paragraphTemplateStructureVo);
     }
 
     /**
@@ -131,187 +138,72 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     /**
-     * 편집 구조에서 필수 페이지 배열을 읽는다.
+     * 그리드형 요청의 페이지와 블록을 요청 순서대로 VO로 변환한다.
      *
-     * @param structure 요청에 포함된 편집 구조 객체
-     * @return 요청 순서대로 페이지를 담은 JSON 배열
-     * @throws ApiException 구조 또는 페이지가 누락됐거나 pages가 배열이 아닌 경우
-     */
-    private static JsonNode readPages(JsonNode structure) {
-        return readArray(requireValue(structure, "structure").path("pages"), "pages");
-    }
-
-    /**
-     * 요청 순서를 보존하며 그리드형 페이지와 블록을 VO로 변환한다.
-     *
-     * @param pageList 요청에서 읽은 페이지 배열
+     * @param structure 그리드형 편집 구조
      * @return 그리드형 템플릿 구조
-     * @throws ApiException 페이지 형식이 올바르지 않거나 문단형 필드가 있거나 블록 입력을 읽을 수 없는 경우
      */
-    private static GridTemplateStructureVo readGrid(JsonNode pageList) {
-        List<GridTemplatePageVo> gridPageList = new ArrayList<>();
-        for (JsonNode value : pageList) {
-            JsonNode page = readObject(value);
-            if (page.has("headingId") || page.has("paragraphIds")) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("structure", "그리드형 페이지를 사용해 주세요."));
-            }
-            TemplatePageOrientation orientation = readEnum(page.path("orientation"), TemplatePageOrientation.class);
-            List<GridTemplateBlockVo> blockList = new ArrayList<>();
-            for (JsonNode block : readArray(page.path("blocks"), "blocks")) {
-                blockList.add(readGridBlock(readObject(block)));
-            }
-            gridPageList.add(GridTemplatePageVo.of(orientation, blockList));
+    private static GridTemplateStructureVo toGridStructure(GridTemplateStructureRequest structure) {
+        List<GridTemplatePageVo> pageList = new ArrayList<>();
+        for (GridTemplateStructureRequest.Page page : requireValue(structure.getPages(), "pages")) {
+            if (page == null) throw new ApiException(ErrorCode.INVALID_REQUEST);
+            List<GridTemplateBlockVo> blockList = requireValue(page.getBlocks(), "blocks").stream()
+                    .map(TemplateServiceImpl::toGridBlock).toList();
+            pageList.add(GridTemplatePageVo.of(page.getOrientation(), blockList));
         }
-        return GridTemplateStructureVo.of(gridPageList);
+        return GridTemplateStructureVo.of(pageList);
     }
 
     /**
-     * 블록 객체에서 식별자, 유형, 제목과 배치를 읽는다.
+     * 그리드 블록의 입력값과 배치를 VO로 변환한다.
      *
-     * <p>{@code rowSpan}을 생략하면 한 행을 차지한다.
-     *
-     * @param block 블록을 담은 JSON 객체
+     * @param block 그리드 블록 요청
      * @return 그리드 블록 VO
-     * @throws ApiException 필수 배치 정보나 식별자가 누락됐거나 값의 형식이 올바르지 않은 경우
      */
-    private static GridTemplateBlockVo readGridBlock(JsonNode block) {
-        int id = readInteger(block.path("id"), "blocks");
-        TemplateBlockType type = readEnum(block.path("type"), TemplateBlockType.class);
-        String title = readText(block.path("title"));
-        JsonNode placement = readObject(requireValue(block.path("placement"), "placement"));
+    private static GridTemplateBlockVo toGridBlock(GridTemplateStructureRequest.Block block) {
+        if (block == null) throw new ApiException(ErrorCode.INVALID_REQUEST);
+        int id = requireValue(block.getId(), "blocks");
+        GridTemplateStructureRequest.Placement placement = requireValue(block.getPlacement(), "placement");
         GridTemplateBlockPlacementVo blockPlacement = GridTemplateBlockPlacementVo.of(
-                readInteger(placement.path("row"), "placement"), readInteger(placement.path("column"), "placement"),
-                readInteger(placement.path("columnSpan"), "placement"),
-                placement.has("rowSpan") ? readInteger(placement.path("rowSpan"), "placement") : 1);
-        return GridTemplateBlockVo.of(id, type, title, blockPlacement);
+                requireValue(placement.getRow(), "placement"), requireValue(placement.getColumn(), "placement"),
+                requireValue(placement.getColumnSpan(), "placement"), requireValue(placement.getRowSpan(), "placement"));
+        return GridTemplateBlockVo.of(id, block.getType(), block.getTitle(), blockPlacement);
     }
 
     /**
-     * 요청 순서를 보존하며 소제목과 문단 식별자를 문단형 페이지로 변환한다.
+     * 문단형 요청의 소제목과 문단 식별자를 요청 순서대로 VO로 변환한다.
      *
-     * @param pageList 요청에서 읽은 페이지 배열
+     * @param structure 문단형 편집 구조
      * @return 문단형 템플릿 구조
-     * @throws ApiException 그리드형 필드가 있거나 소제목 및 문단 입력이 누락됐거나 형식이 올바르지 않은 경우
      */
-    private static ParagraphTemplateStructureVo readParagraph(JsonNode pageList) {
-        List<ParagraphTemplatePageVo> paragraphPageList = new ArrayList<>();
-        for (JsonNode value : pageList) {
-            JsonNode page = readObject(value);
-            if (page.has("blocks") || page.has("orientation")) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("structure", "문단형 페이지를 사용해 주세요."));
+    private static ParagraphTemplateStructureVo toParagraphStructure(ParagraphTemplateStructureRequest structure) {
+        List<ParagraphTemplatePageVo> pageList = new ArrayList<>();
+        for (ParagraphTemplateStructureRequest.Page page : requireValue(structure.getPages(), "pages")) {
+            if (page == null) throw new ApiException(ErrorCode.INVALID_REQUEST);
+            int headingId = requireValue(page.getHeadingId(), "headingId");
+            List<Integer> paragraphIdList = requireValue(page.getParagraphIds(), "paragraphIds");
+            for (Integer paragraphId : paragraphIdList) {
+                requireValue(paragraphId, "paragraphIds");
             }
-            int headingId = readInteger(page.path("headingId"), "headingId");
-            List<Integer> paragraphIdList = new ArrayList<>();
-            for (JsonNode paragraphId : readArray(page.path("paragraphIds"), "paragraphIds")) {
-                paragraphIdList.add(readInteger(paragraphId, "paragraphIds"));
-            }
-            paragraphPageList.add(ParagraphTemplatePageVo.of(headingId, paragraphIdList));
+            pageList.add(ParagraphTemplatePageVo.of(headingId, paragraphIdList));
         }
-        return ParagraphTemplateStructureVo.of(paragraphPageList);
+        return ParagraphTemplateStructureVo.of(pageList);
     }
 
     /**
-     * 입력값이 JSON 객체인지 확인한다.
+     * 등록 요청의 필수 구조값을 확인한다.
      *
-     * @param value 확인할 JSON 값
-     * @return 확인한 JSON 객체
-     * @throws ApiException 값이 JSON 객체가 아닌 경우
+     * @param <T> 구조값 타입
+     * @param value 확인할 값
+     * @param field 오류 응답에 사용할 필드명
+     * @return 입력된 값
+     * @throws ApiException 입력이 누락된 경우
      */
-    private static JsonNode readObject(JsonNode value) {
-        if (!value.isObject()) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST);
-        }
-        return value;
-    }
-
-    /**
-     * 필수 입력값이 JSON 배열인지 확인한다.
-     *
-     * @param value 확인할 JSON 값
-     * @param field 누락 시 오류 응답에 표시할 필드명
-     * @return 확인한 JSON 배열
-     * @throws ApiException 값이 누락됐거나 JSON 배열이 아닌 경우
-     */
-    private static JsonNode readArray(JsonNode value, String field) {
-        if (!requireValue(value, field).isArray()) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST);
-        }
-        return value;
-    }
-
-    /**
-     * 필수 JSON 숫자를 정수로 읽는다.
-     *
-     * @param value 읽을 JSON 값
-     * @param field 누락 시 오류 응답에 표시할 필드명
-     * @return int 범위의 정수
-     * @throws ApiException 값이 누락됐거나 JSON 정수가 아니거나 int 범위를 벗어난 경우
-     */
-    private static int readInteger(JsonNode value, String field) {
-        if (!requireValue(value, field).isIntegralNumber() || !value.canConvertToInt()) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST);
-        }
-        return value.intValue();
-    }
-
-    /**
-     * 선택 입력을 이름이 일치하는 열거형 값으로 변환한다.
-     *
-     * @param <E> 변환할 열거형 타입
-     * @param value 읽을 JSON 문자열
-     * @param enumClass 변환에 사용할 열거형 클래스
-     * @return 이름이 일치하는 열거형 값 또는 입력이 누락되면 null
-     * @throws ApiException JSON 문자열 형식이 아니거나 정의되지 않은 코드인 경우
-     */
-    private static <E extends Enum<E>> E readEnum(JsonNode value, Class<E> enumClass) {
-        String code = readText(value);
-        try {
-            return code == null ? null : Enum.valueOf(enumClass, code);
-        } catch (IllegalArgumentException exception) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    /**
-     * 선택 입력에서 JSON 문자열을 읽는다.
-     *
-     * @param value 읽을 JSON 값
-     * @return 문자열 값 또는 입력이 누락되면 null
-     * @throws ApiException 입력값이 JSON 문자열이 아닌 경우
-     */
-    private static String readText(JsonNode value) {
-        if (isMissing(value)) {
-            return null;
-        }
-        if (!value.isString()) {
-            throw new ApiException(ErrorCode.INVALID_REQUEST);
-        }
-        return value.asString();
-    }
-
-    /**
-     * 필수 JSON 입력이 있는지 확인한다.
-     *
-     * @param value 확인할 JSON 값
-     * @param field 누락 시 오류 응답에 표시할 필드명
-     * @return 입력된 JSON 값
-     * @throws ApiException 입력이 누락됐거나 JSON null인 경우
-     */
-    private static JsonNode requireValue(JsonNode value, String field) {
-        if (isMissing(value)) {
+    private static <T> T requireValue(T value, String field) {
+        if (value == null) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of(field, "필수 입력 항목입니다."));
         }
         return value;
-    }
-
-    /**
-     * 입력이 누락됐거나 JSON null인지 확인한다.
-     *
-     * @param value 확인할 JSON 값
-     * @return 입력이 누락됐거나 null이면 true
-     */
-    private static boolean isMissing(JsonNode value) {
-        return value == null || value.isNull() || value.isMissingNode();
     }
 
     /**

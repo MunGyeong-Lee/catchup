@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,6 +48,27 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         responseHeaders.setContentType(MediaType.APPLICATION_JSON);
         return super.handleExceptionInternal(exception, ResponseVo.failure(ErrorCode.VALIDATION_FAILED, fieldErrors),
                 responseHeaders, status, request);
+    }
+
+    /**
+     * JSON 바인딩이 감싼 필드 검증 오류를 기존 응답으로 변환한다.
+     *
+     * @param exception 요청 본문 바인딩 예외
+     * @param headers 기본 응답 헤더
+     * @param status 기본 응답 상태
+     * @param request 현재 HTTP 요청
+     * @return 필드 검증 오류 또는 일반 요청 형식 오류 응답
+     */
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException exception,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        if (exception.getMostSpecificCause() instanceof ApiException apiException
+                && apiException.getCode() == ErrorCode.VALIDATION_FAILED) {
+            ResponseEntity<ResponseVo> response = this.handleApiException(apiException);
+            return super.handleExceptionInternal(exception, response.getBody(), response.getHeaders(),
+                    response.getStatusCode(), request);
+        }
+        return super.handleHttpMessageNotReadable(exception, headers, status, request);
     }
 
     /** 요청 파싱과 크기 제한 등 Spring이 처리한 HTTP 오류를 공통 형식으로 변환한다. */
