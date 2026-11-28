@@ -9,6 +9,12 @@ public final class SourceDateFormat {
     /** 공통 파서의 인스턴스 생성을 막는다. */
     private SourceDateFormat() {}
 
+    /** 날짜 바인딩에서 형식이나 달력 값이 올바르지 않았음을 나타낸다. */
+    public enum Invalid {
+        /** 서비스 검증 순서가 해당 값에 이르렀을 때 날짜 오류를 반환한다. */
+        VALUE
+    }
+
     /**
      * 시간대가 없는 연월을 읽는다.
      *
